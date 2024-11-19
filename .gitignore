@@ -22,6 +22,7 @@ Icon
 
 # Alfred workflow build artifacts
 *.alfredworkflow
+workflow/
 
 # Node.js (if needed in future)
 node_modules/
