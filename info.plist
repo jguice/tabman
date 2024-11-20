@@ -226,7 +226,7 @@ The Dark Knight of Chrome search tools - a lightning-fast Alfred workflow that p
     <key>version</key>
     <string>1.0.0</string>
     <key>webaddress</key>
-    <string>https://github.com/joshguice/tabman</string>
+    <string>https://github.com/jguice/tabman</string>
     <key>files</key>
     <dict>
         <key>search_tabs.js</key>

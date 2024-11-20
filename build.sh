@@ -7,7 +7,7 @@ rm -rf workflow Tabman.alfredworkflow
 mkdir -p workflow
 
 # Copy files
-cp search_*.js info.plist README.md workflow/
+cp search_*.js info.plist README.md icon.png workflow/
 
 # Ensure scripts are executable
 chmod +x workflow/search_*.js
