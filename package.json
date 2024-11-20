@@ -1,0 +1,15 @@
+{
+  "name": "tabman",
+  "version": "0.0.0-development",
+  "description": "The Dark Knight of Chrome search tools - an Alfred workflow that prowls through your tabs, bookmarks, and history across all profiles 🦇",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jguice/tabman.git"
+  },
+  "author": "Josh Guice <jguice@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jguice/tabman/issues"
+  },
+  "homepage": "https://github.com/jguice/tabman#readme"
+}

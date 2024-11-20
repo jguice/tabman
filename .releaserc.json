@@ -1,0 +1,21 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    "@semantic-release/changelog",
+    ["@semantic-release/exec", {
+      "prepareCmd": "./build.sh",
+      "publishCmd": "echo 'Version ${nextRelease.version} has been released!'"
+    }],
+    ["@semantic-release/git", {
+      "assets": ["CHANGELOG.md", "package.json", "Tabman.alfredworkflow"],
+      "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+    }],
+    ["@semantic-release/github", {
+      "assets": [
+        {"path": "Tabman.alfredworkflow", "label": "Tabman Alfred Workflow"}
+      ]
+    }]
+  ]
+}
