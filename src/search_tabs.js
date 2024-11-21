@@ -18,19 +18,39 @@ function run(argv) {
         const results = [];
         
         // Get all windows from all Chrome profiles
-        chrome.windows().forEach((window) => {
+        chrome.windows().forEach((window, windowIndex) => {
             try {
-                window.tabs().forEach((tab) => {
+                // Get profile information from the first tab's URL
+                let profileInfo = "Default";
+                if (window.tabs.length > 0) {
+                    const firstTabUrl = window.tabs[0].url();
+                    if (firstTabUrl.includes('Profile')) {
+                        const match = firstTabUrl.match(/Profile \d+/);
+                        if (match) {
+                            profileInfo = match[0];
+                        }
+                    }
+                }
+
+                window.tabs().forEach((tab, tabIndex) => {
                     try {
                         const title = tab.title() || '';
                         const url = tab.url() || '';
                         
                         // Search in both title and URL
                         if (title.toLowerCase().includes(query) || url.toLowerCase().includes(query)) {
+                            // Create a tab identifier that includes window index, tab index, and profile
+                            const tabInfo = JSON.stringify({
+                                windowIndex: windowIndex,
+                                tabIndex: tabIndex,
+                                profile: profileInfo,
+                                url: url
+                            });
+
                             results.push({
                                 title: title,
-                                subtitle: url,
-                                arg: url,
+                                subtitle: `${profileInfo} - ${url}`,
+                                arg: tabInfo,
                                 text: {
                                     copy: url,
                                     largetype: title

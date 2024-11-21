@@ -12,7 +12,7 @@
         <array>
             <dict>
                 <key>destinationuid</key>
-                <string>browser-action</string>
+                <string>switch-tab-action</string>
                 <key>modifiers</key>
                 <integer>0</integer>
                 <key>modifiersubtext</key>
@@ -180,6 +180,25 @@
             <key>uid</key>
             <string>browser-action</string>
         </dict>
+        <dict>
+            <key>config</key>
+            <dict>
+                <key>concurrently</key>
+                <false/>
+                <key>escaping</key>
+                <integer>102</integer>
+                <key>script</key>
+                <string>/usr/bin/osascript -l JavaScript "switch_to_tab.js" "{query}"</string>
+                <key>scriptargtype</key>
+                <integer>0</integer>
+                <key>type</key>
+                <integer>0</integer>
+            </dict>
+            <key>type</key>
+            <string>alfred.workflow.action.script</string>
+            <key>uid</key>
+            <string>switch-tab-action</string>
+        </dict>
     </array>
     <key>readme</key>
     <string># Tabman 🦇
@@ -190,14 +209,29 @@ The Dark Knight of Chrome search tools - a lightning-fast Alfred workflow that p
 - Search open tabs (tmt)
 - Search bookmarks (tmb)
 - Search history (tmh)
-- Works across all Chrome profiles
-- No external dependencies</string>
+
+## Installation
+1. Download the workflow
+2. Double-click to install in Alfred
+3. Use the commands below to search
+
+## Commands
+- `tmt [query]` - Search open tabs
+- `tmb [query]` - Search bookmarks
+- `tmh [query]` - Search history</string>
     <key>uidata</key>
     <dict>
         <key>tabs-script</key>
         <dict>
             <key>xpos</key>
             <integer>100</integer>
+            <key>ypos</key>
+            <integer>100</integer>
+        </dict>
+        <key>switch-tab-action</key>
+        <dict>
+            <key>xpos</key>
+            <integer>300</integer>
             <key>ypos</key>
             <integer>100</integer>
         </dict>
@@ -208,19 +242,19 @@ The Dark Knight of Chrome search tools - a lightning-fast Alfred workflow that p
             <key>ypos</key>
             <integer>250</integer>
         </dict>
-        <key>history-script</key>
-        <dict>
-            <key>xpos</key>
-            <integer>100</integer>
-            <key>ypos</key>
-            <integer>400</integer>
-        </dict>
         <key>browser-action</key>
         <dict>
             <key>xpos</key>
             <integer>300</integer>
             <key>ypos</key>
             <integer>250</integer>
+        </dict>
+        <key>history-script</key>
+        <dict>
+            <key>xpos</key>
+            <integer>100</integer>
+            <key>ypos</key>
+            <integer>400</integer>
         </dict>
     </dict>
     <key>version</key>
@@ -235,6 +269,8 @@ The Dark Knight of Chrome search tools - a lightning-fast Alfred workflow that p
         <string>search_bookmarks.js</string>
         <key>search_history.js</key>
         <string>search_history.js</string>
+        <key>switch_to_tab.js</key>
+        <string>switch_to_tab.js</string>
     </dict>
 </dict>
 </plist>
