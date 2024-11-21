@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/jguice/tabman/compare/v1.0.0...v1.0.1) (2024-11-21)
+
+
+### Bug Fixes
+
+* **workflow:** ensure tab switching respects Chrome profiles ([b84138a](https://github.com/jguice/tabman/commit/b84138a75fe82f4142d989bb2a118cda22589948))
+
 # 1.0.0 (2024-11-20)
 
 
