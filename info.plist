@@ -56,6 +56,8 @@
     <false/>
     <key>name</key>
     <string>Tabman</string>
+    <key>version</key>
+    <string>1.0.1</string>
     <key>objects</key>
     <array>
         <dict>
@@ -258,7 +260,7 @@ The Dark Knight of Chrome search tools - a lightning-fast Alfred workflow that p
         </dict>
     </dict>
     <key>version</key>
-    <string>1.0.0</string>
+    <integer>1</integer>
     <key>webaddress</key>
     <string>https://github.com/jguice/tabman</string>
     <key>files</key>
