@@ -24,6 +24,10 @@ Icon
 *.alfredworkflow
 workflow/
 
+# Build artifacts
+Tabman.alfredworkflow
+workflow/
+
 # Node.js (if needed in future)
 node_modules/
 npm-debug.log*

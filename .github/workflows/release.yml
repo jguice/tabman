@@ -40,12 +40,14 @@ jobs:
           NEXT_VERSION=$(npx semantic-release --dry-run | grep -oP 'The next release version is \K[0-9]+\.[0-9]+\.[0-9]+' || echo '')
           
           if [ ! -z "$NEXT_VERSION" ]; then
-            # Create a temporary file with the version update
+            # Update version in info.plist
             awk -v ver="$NEXT_VERSION" '
               /<key>version<\/key>/ {
                 print $0
                 getline
-                sub(/>.*</, ">" ver "<")
+                if ($0 ~ /<(integer|string)>/) {
+                  sub(/>.*</, ">" ver "<")
+                }
               }
               { print }
             ' info.plist > info.plist.tmp && mv info.plist.tmp info.plist
