@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/jguice/tabman/compare/v1.0.1...v1.1.0) (2024-11-21)
+
+
+### Features
+
+* display version in Alfred UI ([65d51df](https://github.com/jguice/tabman/commit/65d51df989d957d9f32c048b3d2d253d7c3db750))
+
 ## [1.0.1](https://github.com/jguice/tabman/compare/v1.0.0...v1.0.1) (2024-11-21)
 
 
