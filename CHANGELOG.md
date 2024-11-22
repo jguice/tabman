@@ -1,3 +1,11 @@
+## [1.1.1](https://github.com/jguice/tabman/compare/v1.1.0...v1.1.1) (2024-11-22)
+
+
+### Bug Fixes
+
+* display correct version in Alfred UI ([be3f521](https://github.com/jguice/tabman/commit/be3f5213ffbf91bf38e24eaf2a5dc26cd8836e85))
+* use sed instead of grep -P in release workflow ([2033a34](https://github.com/jguice/tabman/commit/2033a3454d2c7c0cd861dd1c502171f141e96f4a))
+
 # [1.1.0](https://github.com/jguice/tabman/compare/v1.0.1...v1.1.0) (2024-11-21)
 
 
