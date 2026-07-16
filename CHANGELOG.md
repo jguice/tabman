@@ -1,3 +1,11 @@
+# [1.2.0](https://github.com/jguice/tabman/compare/v1.1.1...v1.2.0) (2026-07-16)
+
+
+### Features
+
+* search Arc pinned bookmarks with tmb; quiet empty results ([e03937b](https://github.com/jguice/tabman/commit/e03937bce5c7abdc68bfcc80ad22d4dd7b887298))
+* search tabs across browsers and Ghostty ([4040814](https://github.com/jguice/tabman/commit/40408149e2846226e3c9dbab128428d4433b4d6c))
+
 ## [1.1.1](https://github.com/jguice/tabman/compare/v1.1.0...v1.1.1) (2024-11-22)
 
 
