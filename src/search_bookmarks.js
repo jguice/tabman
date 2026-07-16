@@ -44,7 +44,7 @@ function collectChromiumBookmarks(source, appPath, supportDir, query, results) {
         bookmarkFiles.forEach(function (bookmarkFile) {
             try {
                 if (!fm.fileExistsAtPath(bookmarkFile)) return;
-                const bookmarkData = $.NSString.stringWithContentsOfFile(bookmarkFile).js;
+                const bookmarkData = $.NSString.stringWithContentsOfFileEncodingError(bookmarkFile, $.NSUTF8StringEncoding, null).js;
                 if (!bookmarkData) return;
                 const bookmarks = JSON.parse(bookmarkData);
                 searchBookmarkNode(bookmarks.roots.bookmark_bar, source, appPath, query, results);
@@ -91,7 +91,7 @@ function collectArcBookmarks(query, results) {
         const fm = $.NSFileManager.defaultManager;
         if (!fm.fileExistsAtPath(path)) return;
 
-        const data = $.NSString.stringWithContentsOfFile(path).js;
+        const data = $.NSString.stringWithContentsOfFileEncodingError(path, $.NSUTF8StringEncoding, null).js;
         if (!data) return;
 
         walkArcNode(JSON.parse(data), query, results, {}, 0);

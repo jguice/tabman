@@ -160,7 +160,7 @@ function loadSnapshot() {
         const attrs = fm.attributesOfItemAtPathError(path, null);
         const age = $.NSDate.date.timeIntervalSince1970 - attrs.fileModificationDate.timeIntervalSince1970;
         if (age > SNAPSHOT_TTL_SECONDS) return null;
-        return JSON.parse($.NSString.stringWithContentsOfFile(path).js);
+        return JSON.parse($.NSString.stringWithContentsOfFileEncodingError(path, $.NSUTF8StringEncoding, null).js);
     } catch (e) {
         return null;
     }
