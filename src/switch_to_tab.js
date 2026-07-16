@@ -1,7 +1,7 @@
 #!/usr/bin/osascript -l JavaScript
 
 // Chromium-family apps sharing the same scripting interface, keyed by the
-// 'app' field emitted by search_tabs.js. To support e.g. Brave, add it here
+// 'app' field emitted by search_tabs.js. To support another one, add it here
 // and add a collect call in search_tabs.js.
 const CHROMIUM_APPS = {
     chrome: 'Google Chrome',
@@ -20,52 +20,37 @@ function run(argv) {
     return switchToChromiumTab(CHROMIUM_APPS[tabInfo.app] || 'Google Chrome', tabInfo);
 }
 
+// IMPORTANT: window collections are z-ordered, and JXA references like
+// windows[3] are lazy index queries re-evaluated on every use - NOT object
+// handles. The first raise reshuffles the z-order, so index-based references
+// silently drift to a different window mid-switch. Always pin the window by
+// id BEFORE activating or raising anything.
+
 function switchToChromiumTab(appName, tabInfo) {
     try {
         const browser = Application(appName);
-        browser.includeStandardAdditions = true;
 
-        // Get all windows
-        const windows = browser.windows();
-
-        // Find the target window by index
-        let targetWindow = null;
-        for (let i = 0; i < windows.length; i++) {
-            if (i === tabInfo.windowIndex) {
-                targetWindow = windows[i];
-                break;
-            }
-        }
-
-        if (!targetWindow) {
+        const windows = browser.windows;
+        if (tabInfo.windowIndex >= windows.length) {
             throw new Error('Target window not found');
         }
+        const win = browser.windows.byId(windows[tabInfo.windowIndex].id());
 
-        // Get all tabs in the window
-        const tabs = targetWindow.tabs();
-
-        // Find the target tab by index
-        let targetTab = null;
-        for (let i = 0; i < tabs.length; i++) {
-            if (i === tabInfo.tabIndex) {
-                targetTab = tabs[i];
-                break;
+        // Verify the tab is still where we found it (tabs move); if not,
+        // re-find it by URL within the window.
+        let tabIndex = tabInfo.tabIndex;
+        const urls = win.tabs.url();
+        if (urls[tabIndex] !== tabInfo.url) {
+            tabIndex = urls.indexOf(tabInfo.url);
+            if (tabIndex === -1) {
+                throw new Error('Target tab not found');
             }
         }
 
-        if (!targetTab) {
-            throw new Error('Target tab not found');
-        }
-
-        // Make the window active first
-        targetWindow.visible = true;
-        targetWindow.index = 1;
-
-        // Select the specific tab
-        targetWindow.activeTabIndex = tabInfo.tabIndex + 1; // JXA uses 1-based indexing
-
-        // Focus the browser
         browser.activate();
+        win.visible = true;
+        win.index = 1;
+        win.activeTabIndex = tabIndex + 1; // 1-based
 
         return "Switched to tab successfully";
 
@@ -74,7 +59,6 @@ function switchToChromiumTab(appName, tabInfo) {
         try {
             // If something goes wrong, fall back to opening the URL
             const browser = Application(appName);
-            browser.includeStandardAdditions = true;
             const windows = browser.windows();
             if (windows.length > 0) {
                 windows[0].make({new: "tab", with: tabInfo.url});
@@ -92,19 +76,18 @@ function switchToArcTab(tabInfo) {
     try {
         const arc = Application('Arc');
 
-        // Find the tab by its stable id across all windows: window order in
-        // Arc is recency-based and shifts between search time and Enter.
+        // Find the tab by its stable id across all windows, then pin the
+        // window by id before any raise can reorder the list.
         const windows = arc.windows;
         const windowCount = windows.length;
         for (let i = 0; i < windowCount; i++) {
             const ids = windows[i].tabs.id();
             for (let j = 0; j < ids.length; j++) {
                 if (ids[j] === tabInfo.tabId) {
-                    // App, then window, then tab.
+                    const win = arc.windows.byId(windows[i].id());
                     arc.activate();
-                    try { windows[i].index = 1; } catch (e) {}
-                    windows[i].tabs[j].select();
-
+                    try { win.index = 1; } catch (e) {}
+                    win.tabs[j].select();
                     return "Switched to tab successfully";
                 }
             }
@@ -118,25 +101,6 @@ function switchToArcTab(tabInfo) {
     }
 }
 
-// Raise a window over its app-mates by title via accessibility. Requires the
-// invoking app (Alfred) to have the Accessibility permission; failures are
-// silent. Matches on the stable part of the title (Ghostty-style animated
-// status glyphs change between reads).
-function raiseWindowByTitle(processName, windowTitle) {
-    try {
-        const se = Application('System Events');
-        const proc = se.processes[processName];
-        proc.frontmost = true;
-        const stable = windowTitle.replace(/^[^A-Za-z0-9]+/, '') || windowTitle;
-        const matches = proc.windows.whose({ name: { _contains: stable } })();
-        if (matches.length > 0) {
-            matches[0].actions['AXRaise'].perform();
-        }
-    } catch (error) {
-        console.log('Error raising window: ' + error);
-    }
-}
-
 function switchToGhosttyTab(tabInfo) {
     try {
         const ghostty = Application('Ghostty');
@@ -147,20 +111,10 @@ function switchToGhosttyTab(tabInfo) {
             const ids = windows[i].tabs.id();
             for (let j = 0; j < ids.length; j++) {
                 if (ids[j] === tabInfo.tabId) {
-                    // App, then window, then tab.
+                    const win = ghostty.windows.byId(windows[i].id());
                     ghostty.activate();
-                    ghostty.activateWindow(windows[i]);
-                    ghostty.selectTab(windows[i].tabs[j]);
-
-                    // As Alfred's panel dismisses, macOS restores focus to the
-                    // previously active app - raising ITS previous key window
-                    // over the one we just targeted when that app is Ghostty.
-                    // Re-assert (twice) after that restore has landed.
-                    delay(0.35);
-                    ghostty.activateWindow(windows[i]);
-                    delay(0.35);
-                    ghostty.activateWindow(windows[i]);
-
+                    ghostty.activateWindow(win);
+                    ghostty.selectTab(win.tabs[j]);
                     return "Switched to tab successfully";
                 }
             }
