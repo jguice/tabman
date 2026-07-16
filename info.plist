@@ -124,11 +124,11 @@
 				<key>scriptargtype</key>
 				<integer>0</integer>
 				<key>subtext</key>
-				<string>Search through all Chrome bookmarks</string>
+				<string>Search through your bookmarks</string>
 				<key>text</key>
-				<string>Search Chrome Bookmarks 🦇</string>
+				<string>Search Bookmarks 🦇</string>
 				<key>title</key>
-				<string>Search Chrome Bookmarks</string>
+				<string>Search Bookmarks</string>
 				<key>type</key>
 				<integer>0</integer>
 				<key>withspace</key>

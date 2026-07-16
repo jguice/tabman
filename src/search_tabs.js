@@ -137,14 +137,6 @@ function run(argv) {
     collectArcTabs(query, results);
     collectGhosttyTabs(query, results);
 
-    if (results.length === 0) {
-        results.push({
-            title: 'No matching tabs found',
-            subtitle: 'Try a different search term (is a supported app running?)',
-            valid: false
-        });
-    }
-
     return JSON.stringify({ items: results });
 }
 
