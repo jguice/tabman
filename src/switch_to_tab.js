@@ -100,9 +100,11 @@ function switchToArcTab(tabInfo) {
             const ids = windows[i].tabs.id();
             for (let j = 0; j < ids.length; j++) {
                 if (ids[j] === tabInfo.tabId) {
-                    windows[i].tabs[j].select();
-                    try { windows[i].index = 1; } catch (e) {}
+                    // App, then window, then tab.
                     arc.activate();
+                    try { windows[i].index = 1; } catch (e) {}
+                    windows[i].tabs[j].select();
+
                     return "Switched to tab successfully";
                 }
             }
@@ -126,9 +128,11 @@ function switchToGhosttyTab(tabInfo) {
             const ids = windows[i].tabs.id();
             for (let j = 0; j < ids.length; j++) {
                 if (ids[j] === tabInfo.tabId) {
-                    ghostty.selectTab(windows[i].tabs[j]);
-                    ghostty.activateWindow(windows[i]);
+                    // App, then window, then tab.
                     ghostty.activate();
+                    ghostty.activateWindow(windows[i]);
+                    ghostty.selectTab(windows[i].tabs[j]);
+
                     return "Switched to tab successfully";
                 }
             }
