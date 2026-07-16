@@ -88,7 +88,7 @@ function makePreviewProvider() {
         }
     }
 
-    return { shotForWindow: shotForWindow };
+    return { shotForWindow: shotForWindow, cacheDir: ensureCacheDir };
 }
 
 // Composite a capture onto a transparent square canvas (aspect-fit, centered)
@@ -126,21 +126,68 @@ function previewIcon(owner, title, key, fallbackAppPath) {
     return { type: 'fileicon', path: fallbackAppPath };
 }
 
+const SNAPSHOT_TTL_SECONDS = 8;
+
 function run(argv) {
     const query = argv[0].toLowerCase();
-    const results = [];
+    const items = loadSnapshot() || buildSnapshot();
 
-    // Chromium-family browsers share the same scripting interface; to add one,
-    // add a collect call here and a CHROMIUM_APPS entry in switch_to_tab.js.
-    collectChromiumTabs('Google Chrome', 'chrome', query, results);
-    collectChromiumTabs('Brave Browser', 'brave', query, results);
-    collectArcTabs(query, results);
-    collectGhosttyTabs(query, results);
+    const results = items.filter(function (item) {
+        return item._search.indexOf(query) !== -1;
+    }).map(function (item) {
+        return {
+            title: item.title,
+            subtitle: item.subtitle,
+            arg: item.arg,
+            icon: item.icon,
+            text: item.text,
+            quicklookurl: item.quicklookurl
+        };
+    });
 
     return JSON.stringify({ items: results });
 }
 
-function collectChromiumTabs(appName, appKey, query, results) {
+// The full tab list (with preview icons) is snapshotted for a few seconds so
+// each keystroke filters in-process instead of re-walking every app.
+function loadSnapshot() {
+    try {
+        const dir = previews.cacheDir();
+        if (!dir) return null;
+        const path = dir + '/tabs-snapshot.json';
+        const fm = $.NSFileManager.defaultManager;
+        if (!fm.fileExistsAtPath(path)) return null;
+        const attrs = fm.attributesOfItemAtPathError(path, null);
+        const age = $.NSDate.date.timeIntervalSince1970 - attrs.fileModificationDate.timeIntervalSince1970;
+        if (age > SNAPSHOT_TTL_SECONDS) return null;
+        return JSON.parse($.NSString.stringWithContentsOfFile(path).js);
+    } catch (e) {
+        return null;
+    }
+}
+
+function buildSnapshot() {
+    const items = [];
+
+    // Chromium-family browsers share the same scripting interface; to add one,
+    // add a collect call here and a CHROMIUM_APPS entry in switch_to_tab.js.
+    collectChromiumTabs('Google Chrome', 'chrome', items);
+    collectChromiumTabs('Brave Browser', 'brave', items);
+    collectArcTabs(items);
+    collectGhosttyTabs(items);
+
+    try {
+        const dir = previews.cacheDir();
+        if (dir) {
+            $.NSString.alloc.initWithUTF8String(JSON.stringify(items))
+                .writeToFileAtomicallyEncodingError(dir + '/tabs-snapshot.json', true, $.NSUTF8StringEncoding, null);
+        }
+    } catch (e) {}
+
+    return items;
+}
+
+function collectChromiumTabs(appName, appKey, items) {
     try {
         const browser = Application(appName);
         browser.includeStandardAdditions = true;
@@ -149,8 +196,7 @@ function collectChromiumTabs(appName, appKey, query, results) {
             return;
         }
 
-        // Get all windows from all profiles
-        browser.windows().forEach((window, windowIndex) => {
+        browser.windows().forEach(function (window, windowIndex) {
             try {
                 // Get profile information from the first tab's URL
                 let profileInfo = "Default";
@@ -165,33 +211,26 @@ function collectChromiumTabs(appName, appKey, query, results) {
                 }
 
                 let windowIcon = null;
-                window.tabs().forEach((tab, tabIndex) => {
+                window.tabs().forEach(function (tab, tabIndex) {
                     try {
                         const title = tab.title() || '';
                         const url = tab.url() || '';
 
-                        // Search in both title and URL
-                        if (title.toLowerCase().includes(query) || url.toLowerCase().includes(query)) {
-                            const tabInfo = JSON.stringify({
+                        items.push({
+                            title: title,
+                            subtitle: profileInfo + ' - ' + url,
+                            icon: windowIcon = windowIcon || previewIcon(appName, window.name(), appKey + windowIndex, '/Applications/' + appName + '.app'),
+                            arg: JSON.stringify({
                                 app: appKey,
                                 windowIndex: windowIndex,
                                 tabIndex: tabIndex,
                                 profile: profileInfo,
                                 url: url
-                            });
-
-                            results.push({
-                                title: title,
-                                subtitle: profileInfo + ' - ' + url,
-                                icon: windowIcon = windowIcon || previewIcon(appName, window.name(), appKey + windowIndex, '/Applications/' + appName + '.app'),
-                                arg: tabInfo,
-                                text: {
-                                    copy: url,
-                                    largetype: title
-                                },
-                                quicklookurl: url
-                            });
-                        }
+                            }),
+                            text: { copy: url, largetype: title },
+                            quicklookurl: url,
+                            _search: (title + ' ' + url).toLowerCase()
+                        });
                     } catch (tabError) {
                         console.log('Error processing tab: ' + tabError);
                     }
@@ -205,7 +244,7 @@ function collectChromiumTabs(appName, appKey, query, results) {
     }
 }
 
-function collectArcTabs(query, results) {
+function collectArcTabs(items) {
     try {
         const arc = Application('Arc');
         arc.includeStandardAdditions = true;
@@ -218,36 +257,25 @@ function collectArcTabs(query, results) {
         const windowCount = windows.length;
         for (let windowIndex = 0; windowIndex < windowCount; windowIndex++) {
             try {
-                // Bulk-fetch titles and URLs (one Apple Event each per window)
+                // Bulk-fetch per window: one Apple Event per property
                 const titles = windows[windowIndex].tabs.title();
                 const urls = windows[windowIndex].tabs.url();
+                const ids = windows[windowIndex].tabs.id();
                 let windowIcon = null;
 
                 for (let tabIndex = 0; tabIndex < titles.length; tabIndex++) {
                     const title = titles[tabIndex] || '';
                     const url = urls[tabIndex] || '';
 
-                    // Search in both title and URL
-                    if (title.toLowerCase().includes(query) || url.toLowerCase().includes(query)) {
-                        const tabInfo = JSON.stringify({
-                            app: 'arc',
-                            windowIndex: windowIndex,
-                            tabIndex: tabIndex,
-                            url: url
-                        });
-
-                        results.push({
-                            title: title,
-                            subtitle: 'Arc - ' + url,
-                            icon: windowIcon = windowIcon || previewIcon('Arc', windows[windowIndex].name(), 'arc' + windowIndex, '/Applications/Arc.app'),
-                            arg: tabInfo,
-                            text: {
-                                copy: url,
-                                largetype: title
-                            },
-                            quicklookurl: url
-                        });
-                    }
+                    items.push({
+                        title: title,
+                        subtitle: 'Arc - ' + url,
+                        icon: windowIcon = windowIcon || previewIcon('Arc', windows[windowIndex].name(), 'arc' + windowIndex, '/Applications/Arc.app'),
+                        arg: JSON.stringify({ app: 'arc', tabId: ids[tabIndex], url: url }),
+                        text: { copy: url, largetype: title },
+                        quicklookurl: url,
+                        _search: (title + ' ' + url).toLowerCase()
+                    });
                 }
             } catch (windowError) {
                 console.log('Error processing Arc window: ' + windowError);
@@ -258,7 +286,7 @@ function collectArcTabs(query, results) {
     }
 }
 
-function collectGhosttyTabs(query, results) {
+function collectGhosttyTabs(items) {
     try {
         const ghostty = Application('Ghostty');
 
@@ -270,7 +298,6 @@ function collectGhosttyTabs(query, results) {
         const windowCount = windows.length;
         for (let windowIndex = 0; windowIndex < windowCount; windowIndex++) {
             try {
-                // Bulk-fetch names and ids (one Apple Event each per window)
                 const names = windows[windowIndex].tabs.name();
                 const ids = windows[windowIndex].tabs.id();
                 let windowIcon = null;
@@ -278,23 +305,14 @@ function collectGhosttyTabs(query, results) {
                 for (let tabIndex = 0; tabIndex < names.length; tabIndex++) {
                     const name = names[tabIndex] || '';
 
-                    if (name.toLowerCase().includes(query)) {
-                        const tabInfo = JSON.stringify({
-                            app: 'ghostty',
-                            tabId: ids[tabIndex]
-                        });
-
-                        results.push({
-                            title: name,
-                            subtitle: 'Ghostty',
-                            icon: windowIcon = windowIcon || previewIcon('Ghostty', windows[windowIndex].name(), 'ghostty' + windowIndex, '/Applications/Ghostty.app'),
-                            arg: tabInfo,
-                            text: {
-                                copy: name,
-                                largetype: name
-                            }
-                        });
-                    }
+                    items.push({
+                        title: name,
+                        subtitle: 'Ghostty',
+                        icon: windowIcon = windowIcon || previewIcon('Ghostty', windows[windowIndex].name(), 'ghostty' + windowIndex, '/Applications/Ghostty.app'),
+                        arg: JSON.stringify({ app: 'ghostty', tabId: ids[tabIndex] }),
+                        text: { copy: name, largetype: name },
+                        _search: name.toLowerCase()
+                    });
                 }
             } catch (windowError) {
                 console.log('Error processing Ghostty window: ' + windowError);

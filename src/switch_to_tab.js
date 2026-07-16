@@ -91,47 +91,28 @@ function switchToChromiumTab(appName, tabInfo) {
 function switchToArcTab(tabInfo) {
     try {
         const arc = Application('Arc');
-        arc.includeStandardAdditions = true;
 
+        // Find the tab by its stable id across all windows: window order in
+        // Arc is recency-based and shifts between search time and Enter.
         const windows = arc.windows;
-
-        if (tabInfo.windowIndex >= windows.length) {
-            throw new Error('Target window not found');
-        }
-        const targetWindow = windows[tabInfo.windowIndex];
-
-        // Verify the tab is still where we found it (tabs move); if not, find it by URL
-        let tabIndex = tabInfo.tabIndex;
-        const urls = targetWindow.tabs.url();
-        if (urls[tabIndex] !== tabInfo.url) {
-            tabIndex = urls.indexOf(tabInfo.url);
-            if (tabIndex === -1) {
-                throw new Error('Target tab not found');
+        const windowCount = windows.length;
+        for (let i = 0; i < windowCount; i++) {
+            const ids = windows[i].tabs.id();
+            for (let j = 0; j < ids.length; j++) {
+                if (ids[j] === tabInfo.tabId) {
+                    windows[i].tabs[j].select();
+                    try { windows[i].index = 1; } catch (e) {}
+                    arc.activate();
+                    return "Switched to tab successfully";
+                }
             }
         }
 
-        targetWindow.tabs[tabIndex].select();
-        targetWindow.focus();
-        arc.activate();
-
-        return "Switched to tab successfully";
+        return "Arc tab not found (was it closed?)";
 
     } catch (error) {
         console.log('Error switching to Arc tab: ' + error);
-        try {
-            // If something goes wrong, fall back to opening the URL
-            const arc = Application('Arc');
-            arc.includeStandardAdditions = true;
-            const windows = arc.windows();
-            if (windows.length > 0) {
-                windows[0].make({new: "tab", withProperties: {url: tabInfo.url}});
-                arc.activate();
-            }
-            return "Opened URL in new tab (fallback)";
-        } catch (fallbackError) {
-            console.log('Error in fallback: ' + fallbackError);
-            return "Failed to switch tab or open URL";
-        }
+        return "Failed to switch to Arc tab";
     }
 }
 
