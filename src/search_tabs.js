@@ -129,11 +129,15 @@ function previewIcon(owner, title, key, fallbackAppPath) {
 const SNAPSHOT_TTL_SECONDS = 8;
 
 function run(argv) {
-    const query = argv[0].toLowerCase();
+    // Every whitespace-separated token must match somewhere, in any order,
+    // so "natera site" finds "Natera Conference Site" (#5).
+    const tokens = argv[0].toLowerCase().split(/\s+/).filter(Boolean);
     const items = loadSnapshot() || buildSnapshot();
 
     const results = items.filter(function (item) {
-        return item._search.indexOf(query) !== -1;
+        return tokens.every(function (token) {
+            return item._search.indexOf(token) !== -1;
+        });
     }).map(function (item) {
         return {
             title: item.title,

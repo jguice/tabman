@@ -1,5 +1,6 @@
 function run(argv) {
-    const query = argv[0].toLowerCase();
+    // Every whitespace-separated token must match somewhere, in any order (#5).
+    const query = argv[0].toLowerCase().split(/\s+/).filter(Boolean);
     const results = [];
 
     collectChromiumBookmarks('Chrome', '/Applications/Google Chrome.app',
@@ -9,6 +10,13 @@ function run(argv) {
     collectArcBookmarks(query, results);
 
     return JSON.stringify({ items: results });
+}
+
+function matchesTokens(text, tokens) {
+    const haystack = text.toLowerCase();
+    return tokens.every(function (token) {
+        return haystack.indexOf(token) !== -1;
+    });
 }
 
 function pushBookmark(results, source, appPath, title, url) {
@@ -65,7 +73,7 @@ function searchBookmarkNode(node, source, appPath, query, results) {
         const title = node.name || '';
         const url = node.url || '';
 
-        if (title.toLowerCase().includes(query) || url.toLowerCase().includes(query)) {
+        if (matchesTokens(title + ' ' + url, query)) {
             pushBookmark(results, source, appPath, title, url);
         }
     }
@@ -115,7 +123,7 @@ function walkArcNode(node, query, results, seen, depth) {
         const key = url + '|' + title;
         if (!seen[key]) {
             seen[key] = true;
-            if (title.toLowerCase().includes(query) || url.toLowerCase().includes(query)) {
+            if (matchesTokens(title + ' ' + url, query)) {
                 pushBookmark(results, 'Arc', '/Applications/Arc.app', title, url);
             }
         }
