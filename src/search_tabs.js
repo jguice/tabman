@@ -233,7 +233,7 @@ function collectChromiumTabs(appName, appKey, items) {
                             }),
                             text: { copy: url, largetype: title },
                             quicklookurl: url,
-                            _search: (title + ' ' + url).toLowerCase()
+                            _search: (appName + ' ' + appKey + ' ' + title + ' ' + url).toLowerCase()
                         });
                     } catch (tabError) {
                         console.log('Error processing tab: ' + tabError);
@@ -278,7 +278,7 @@ function collectArcTabs(items) {
                         arg: JSON.stringify({ app: 'arc', tabId: ids[tabIndex], url: url }),
                         text: { copy: url, largetype: title },
                         quicklookurl: url,
-                        _search: (title + ' ' + url).toLowerCase()
+                        _search: ('arc ' + title + ' ' + url).toLowerCase()
                     });
                 }
             } catch (windowError) {
@@ -315,7 +315,7 @@ function collectGhosttyTabs(items) {
                         icon: windowIcon = windowIcon || previewIcon('Ghostty', windows[windowIndex].name(), 'ghostty' + windowIndex, '/Applications/Ghostty.app'),
                         arg: JSON.stringify({ app: 'ghostty', tabId: ids[tabIndex] }),
                         text: { copy: name, largetype: name },
-                        _search: name.toLowerCase()
+                        _search: ('ghostty ' + name).toLowerCase()
                     });
                 }
             } catch (windowError) {
