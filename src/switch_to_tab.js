@@ -118,6 +118,25 @@ function switchToArcTab(tabInfo) {
     }
 }
 
+// Raise a window over its app-mates by title via accessibility. Requires the
+// invoking app (Alfred) to have the Accessibility permission; failures are
+// silent. Matches on the stable part of the title (Ghostty-style animated
+// status glyphs change between reads).
+function raiseWindowByTitle(processName, windowTitle) {
+    try {
+        const se = Application('System Events');
+        const proc = se.processes[processName];
+        proc.frontmost = true;
+        const stable = windowTitle.replace(/^[^A-Za-z0-9]+/, '') || windowTitle;
+        const matches = proc.windows.whose({ name: { _contains: stable } })();
+        if (matches.length > 0) {
+            matches[0].actions['AXRaise'].perform();
+        }
+    } catch (error) {
+        console.log('Error raising window: ' + error);
+    }
+}
+
 function switchToGhosttyTab(tabInfo) {
     try {
         const ghostty = Application('Ghostty');
@@ -132,6 +151,15 @@ function switchToGhosttyTab(tabInfo) {
                     ghostty.activate();
                     ghostty.activateWindow(windows[i]);
                     ghostty.selectTab(windows[i].tabs[j]);
+
+                    // As Alfred's panel dismisses, macOS restores focus to the
+                    // previously active app - raising ITS previous key window
+                    // over the one we just targeted when that app is Ghostty.
+                    // Re-assert (twice) after that restore has landed.
+                    delay(0.35);
+                    ghostty.activateWindow(windows[i]);
+                    delay(0.35);
+                    ghostty.activateWindow(windows[i]);
 
                     return "Switched to tab successfully";
                 }

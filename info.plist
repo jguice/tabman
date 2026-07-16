@@ -159,11 +159,11 @@
 				<key>scriptargtype</key>
 				<integer>0</integer>
 				<key>subtext</key>
-				<string>Search through Chrome history</string>
+				<string>Search through your browser history</string>
 				<key>text</key>
-				<string>Search Chrome History 🦇</string>
+				<string>Search History 🦇</string>
 				<key>title</key>
-				<string>Search Chrome History</string>
+				<string>Search History</string>
 				<key>type</key>
 				<integer>0</integer>
 				<key>withspace</key>
