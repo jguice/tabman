@@ -2,7 +2,10 @@ function run(argv) {
     const query = argv[0].toLowerCase();
     const results = [];
 
-    collectChromeBookmarks(query, results);
+    collectChromiumBookmarks('Chrome', '/Applications/Google Chrome.app',
+        '/Library/Application Support/Google/Chrome', query, results);
+    collectChromiumBookmarks('Brave', '/Applications/Brave Browser.app',
+        '/Library/Application Support/BraveSoftware/Brave-Browser', query, results);
     collectArcBookmarks(query, results);
 
     return JSON.stringify({ items: results });
@@ -22,10 +25,10 @@ function pushBookmark(results, source, appPath, title, url) {
     });
 }
 
-function collectChromeBookmarks(query, results) {
+function collectChromiumBookmarks(source, appPath, supportDir, query, results) {
     try {
         const homeDir = $.NSHomeDirectory().js;
-        const profilesDir = homeDir + '/Library/Application Support/Google/Chrome';
+        const profilesDir = homeDir + supportDir;
         const fm = $.NSFileManager.defaultManager;
 
         if (!fm.fileExistsAtPath(profilesDir)) {
@@ -44,18 +47,18 @@ function collectChromeBookmarks(query, results) {
                 const bookmarkData = $.NSString.stringWithContentsOfFile(bookmarkFile).js;
                 if (!bookmarkData) return;
                 const bookmarks = JSON.parse(bookmarkData);
-                searchBookmarkNode(bookmarks.roots.bookmark_bar, query, results);
-                searchBookmarkNode(bookmarks.roots.other, query, results);
+                searchBookmarkNode(bookmarks.roots.bookmark_bar, source, appPath, query, results);
+                searchBookmarkNode(bookmarks.roots.other, source, appPath, query, results);
             } catch (error) {
                 console.log('Error processing bookmark file: ' + bookmarkFile + ' - ' + error);
             }
         });
     } catch (error) {
-        console.log('Error accessing Chrome bookmarks: ' + error);
+        console.log('Error accessing ' + source + ' bookmarks: ' + error);
     }
 }
 
-function searchBookmarkNode(node, query, results) {
+function searchBookmarkNode(node, source, appPath, query, results) {
     if (!node) return;
 
     if (node.type === 'url') {
@@ -63,14 +66,14 @@ function searchBookmarkNode(node, query, results) {
         const url = node.url || '';
 
         if (title.toLowerCase().includes(query) || url.toLowerCase().includes(query)) {
-            pushBookmark(results, 'Chrome', '/Applications/Google Chrome.app', title, url);
+            pushBookmark(results, source, appPath, title, url);
         }
     }
 
     if (node.children) {
         node.children.forEach(function (child) {
             try {
-                searchBookmarkNode(child, query, results);
+                searchBookmarkNode(child, source, appPath, query, results);
             } catch (error) {
                 console.log('Error processing bookmark node: ' + error);
             }

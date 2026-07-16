@@ -4,7 +4,8 @@
 // 'app' field emitted by search_tabs.js. To support e.g. Brave, add it here
 // and add a collect call in search_tabs.js.
 const CHROMIUM_APPS = {
-    chrome: 'Google Chrome'
+    chrome: 'Google Chrome',
+    brave: 'Brave Browser'
 };
 
 function run(argv) {

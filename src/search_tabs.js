@@ -130,10 +130,10 @@ function run(argv) {
     const query = argv[0].toLowerCase();
     const results = [];
 
-    // Chromium-family browsers share the same scripting interface; to add one
-    // (e.g. Brave), add a collect call here and a CHROMIUM_APPS entry in
-    // switch_to_tab.js.
+    // Chromium-family browsers share the same scripting interface; to add one,
+    // add a collect call here and a CHROMIUM_APPS entry in switch_to_tab.js.
     collectChromiumTabs('Google Chrome', 'chrome', query, results);
+    collectChromiumTabs('Brave Browser', 'brave', query, results);
     collectArcTabs(query, results);
     collectGhosttyTabs(query, results);
 

@@ -51,7 +51,7 @@
 	<key>createdby</key>
 	<string>Josh Guice</string>
 	<key>description</key>
-	<string>The Dark Knight of tab search tools - prowls through your open tabs (Chrome, Arc, Ghostty), bookmarks, and history 🦇</string>
+	<string>The Dark Knight of tab search tools - prowls through your open tabs (Chrome, Brave, Arc, Ghostty), bookmarks, and history 🦇</string>
 	<key>disabled</key>
 	<false/>
 	<key>files</key>
@@ -89,7 +89,7 @@
 				<key>scriptargtype</key>
 				<integer>0</integer>
 				<key>subtext</key>
-				<string>Search across open tabs in Chrome, Arc &amp; Ghostty</string>
+				<string>Search across open tabs in Chrome, Brave, Arc &amp; Ghostty</string>
 				<key>text</key>
 				<string>Search Chrome Tabs 🦇</string>
 				<key>title</key>
@@ -212,7 +212,7 @@
 		</dict>
 	</array>
 	<key>readme</key>
-	<string>The Dark Knight of tab search tools - a lightning-fast Alfred workflow that prowls through your open tabs (Chrome, Arc, Ghostty), plus Chrome bookmarks and history.</string>
+	<string>The Dark Knight of tab search tools - a lightning-fast Alfred workflow that prowls through your open tabs (Chrome, Brave, Arc, Ghostty), plus Chrome bookmarks and history.</string>
 	<key>uidata</key>
 	<dict>
 		<key>bookmarks-script</key>
