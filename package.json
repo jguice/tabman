@@ -1,7 +1,7 @@
 {
   "name": "tabman",
   "version": "0.0.0-development",
-  "description": "The Dark Knight of Chrome search tools - an Alfred workflow that prowls through your tabs, bookmarks, and history across all profiles 🦇",
+  "description": "The Dark Knight of tab search tools - an Alfred workflow that prowls through your open tabs (Chrome, Arc, Ghostty), bookmarks, and history \ud83e\udd87",
   "repository": {
     "type": "git",
     "url": "https://github.com/jguice/tabman.git"

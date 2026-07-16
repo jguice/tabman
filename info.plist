@@ -2,275 +2,258 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>bundleid</key>
-    <string>com.joshguice.tabman</string>
-    <key>category</key>
-    <string>Productivity</string>
-    <key>connections</key>
-    <dict>
-        <key>tabs-script</key>
-        <array>
-            <dict>
-                <key>destinationuid</key>
-                <string>switch-tab-action</string>
-                <key>modifiers</key>
-                <integer>0</integer>
-                <key>modifiersubtext</key>
-                <string></string>
-                <key>vitoclose</key>
-                <false/>
-            </dict>
-        </array>
-        <key>bookmarks-script</key>
-        <array>
-            <dict>
-                <key>destinationuid</key>
-                <string>browser-action</string>
-                <key>modifiers</key>
-                <integer>0</integer>
-                <key>modifiersubtext</key>
-                <string></string>
-                <key>vitoclose</key>
-                <false/>
-            </dict>
-        </array>
-        <key>history-script</key>
-        <array>
-            <dict>
-                <key>destinationuid</key>
-                <string>browser-action</string>
-                <key>modifiers</key>
-                <integer>0</integer>
-                <key>modifiersubtext</key>
-                <string></string>
-                <key>vitoclose</key>
-                <false/>
-            </dict>
-        </array>
-    </dict>
-    <key>createdby</key>
-    <string>Josh Guice</string>
-    <key>description</key>
-    <string>The Dark Knight of Chrome search tools - prowls through your tabs, bookmarks, and history across all profiles 🦇</string>
-    <key>disabled</key>
-    <false/>
-    <key>name</key>
-    <string>Tabman</string>
-    <key>objects</key>
-    <array>
-        <dict>
-            <key>config</key>
-            <dict>
-                <key>alfredfiltersresults</key>
-                <false/>
-                <key>argumenttype</key>
-                <integer>0</integer>
-                <key>escaping</key>
-                <integer>102</integer>
-                <key>keyword</key>
-                <string>tmt</string>
-                <key>queuedelay</key>
-                <integer>3</integer>
-                <key>runningsubtext</key>
-                <string>Searching tabs...</string>
-                <key>script</key>
-                <string>/usr/bin/osascript -l JavaScript "search_tabs.js" "{query}"</string>
-                <key>scriptargtype</key>
-                <integer>0</integer>
-                <key>subtext</key>
-                <string>Search across all open Chrome tabs</string>
-                <key>text</key>
-                <string>Search Chrome Tabs 🦇</string>
-                <key>title</key>
-                <string>Search Chrome Tabs</string>
-                <key>type</key>
-                <integer>0</integer>
-                <key>withspace</key>
-                <true/>
-            </dict>
-            <key>type</key>
-            <string>alfred.workflow.input.scriptfilter</string>
-            <key>uid</key>
-            <string>tabs-script</string>
-        </dict>
-        <dict>
-            <key>config</key>
-            <dict>
-                <key>alfredfiltersresults</key>
-                <false/>
-                <key>argumenttype</key>
-                <integer>0</integer>
-                <key>escaping</key>
-                <integer>102</integer>
-                <key>keyword</key>
-                <string>tmb</string>
-                <key>queuedelay</key>
-                <integer>3</integer>
-                <key>runningsubtext</key>
-                <string>Searching bookmarks...</string>
-                <key>script</key>
-                <string>/usr/bin/osascript -l JavaScript "search_bookmarks.js" "{query}"</string>
-                <key>scriptargtype</key>
-                <integer>0</integer>
-                <key>subtext</key>
-                <string>Search through all Chrome bookmarks</string>
-                <key>text</key>
-                <string>Search Chrome Bookmarks 🦇</string>
-                <key>title</key>
-                <string>Search Chrome Bookmarks</string>
-                <key>type</key>
-                <integer>0</integer>
-                <key>withspace</key>
-                <true/>
-            </dict>
-            <key>type</key>
-            <string>alfred.workflow.input.scriptfilter</string>
-            <key>uid</key>
-            <string>bookmarks-script</string>
-        </dict>
-        <dict>
-            <key>config</key>
-            <dict>
-                <key>alfredfiltersresults</key>
-                <false/>
-                <key>argumenttype</key>
-                <integer>0</integer>
-                <key>escaping</key>
-                <integer>102</integer>
-                <key>keyword</key>
-                <string>tmh</string>
-                <key>queuedelay</key>
-                <integer>3</integer>
-                <key>runningsubtext</key>
-                <string>Searching history...</string>
-                <key>script</key>
-                <string>/usr/bin/osascript -l JavaScript "search_history.js" "{query}"</string>
-                <key>scriptargtype</key>
-                <integer>0</integer>
-                <key>subtext</key>
-                <string>Search through Chrome history</string>
-                <key>text</key>
-                <string>Search Chrome History 🦇</string>
-                <key>title</key>
-                <string>Search Chrome History</string>
-                <key>type</key>
-                <integer>0</integer>
-                <key>withspace</key>
-                <true/>
-            </dict>
-            <key>type</key>
-            <string>alfred.workflow.input.scriptfilter</string>
-            <key>uid</key>
-            <string>history-script</string>
-        </dict>
-        <dict>
-            <key>config</key>
-            <dict>
-                <key>browser</key>
-                <string></string>
-                <key>spaces</key>
-                <false/>
-                <key>url</key>
-                <string>{query}</string>
-                <key>utf8</key>
-                <true/>
-            </dict>
-            <key>type</key>
-            <string>alfred.workflow.action.openurl</string>
-            <key>uid</key>
-            <string>browser-action</string>
-        </dict>
-        <dict>
-            <key>config</key>
-            <dict>
-                <key>concurrently</key>
-                <false/>
-                <key>escaping</key>
-                <integer>102</integer>
-                <key>script</key>
-                <string>/usr/bin/osascript -l JavaScript "switch_to_tab.js" "{query}"</string>
-                <key>scriptargtype</key>
-                <integer>0</integer>
-                <key>type</key>
-                <integer>0</integer>
-            </dict>
-            <key>type</key>
-            <string>alfred.workflow.action.script</string>
-            <key>uid</key>
-            <string>switch-tab-action</string>
-        </dict>
-    </array>
-    <key>readme</key>
-    <string># Tabman 🦇
-
-The Dark Knight of Chrome search tools - a lightning-fast Alfred workflow that prowls through your tabs, bookmarks, and history across all profiles.
-
-## Features
-- Search open tabs (tmt)
-- Search bookmarks (tmb)
-- Search history (tmh)
-
-## Installation
-1. Download the workflow
-2. Double-click to install in Alfred
-3. Use the commands below to search
-
-## Commands
-- `tmt [query]` - Search open tabs
-- `tmb [query]` - Search bookmarks
-- `tmh [query]` - Search history</string>
-    <key>uidata</key>
-    <dict>
-        <key>tabs-script</key>
-        <dict>
-            <key>xpos</key>
-            <integer>100</integer>
-            <key>ypos</key>
-            <integer>100</integer>
-        </dict>
-        <key>switch-tab-action</key>
-        <dict>
-            <key>xpos</key>
-            <integer>300</integer>
-            <key>ypos</key>
-            <integer>100</integer>
-        </dict>
-        <key>bookmarks-script</key>
-        <dict>
-            <key>xpos</key>
-            <integer>100</integer>
-            <key>ypos</key>
-            <integer>250</integer>
-        </dict>
-        <key>browser-action</key>
-        <dict>
-            <key>xpos</key>
-            <integer>300</integer>
-            <key>ypos</key>
-            <integer>250</integer>
-        </dict>
-        <key>history-script</key>
-        <dict>
-            <key>xpos</key>
-            <integer>100</integer>
-            <key>ypos</key>
-            <integer>400</integer>
-        </dict>
-    </dict>
-    <key>version</key>
-    <string>1.1.1</string>
-    <key>webaddress</key>
-    <string>https://github.com/jguice/tabman</string>
-    <key>files</key>
-    <dict>
-        <key>search_tabs.js</key>
-        <string>search_tabs.js</string>
-        <key>search_bookmarks.js</key>
-        <string>search_bookmarks.js</string>
-        <key>search_history.js</key>
-        <string>search_history.js</string>
-        <key>switch_to_tab.js</key>
-        <string>switch_to_tab.js</string>
-    </dict>
+	<key>bundleid</key>
+	<string>com.joshguice.tabman</string>
+	<key>category</key>
+	<string>Productivity</string>
+	<key>connections</key>
+	<dict>
+		<key>bookmarks-script</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>browser-action</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>history-script</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>browser-action</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+		<key>tabs-script</key>
+		<array>
+			<dict>
+				<key>destinationuid</key>
+				<string>switch-tab-action</string>
+				<key>modifiers</key>
+				<integer>0</integer>
+				<key>modifiersubtext</key>
+				<string></string>
+				<key>vitoclose</key>
+				<false/>
+			</dict>
+		</array>
+	</dict>
+	<key>createdby</key>
+	<string>Josh Guice</string>
+	<key>description</key>
+	<string>The Dark Knight of tab search tools - prowls through your open tabs (Chrome, Arc, Ghostty), bookmarks, and history 🦇</string>
+	<key>disabled</key>
+	<false/>
+	<key>files</key>
+	<dict>
+		<key>search_bookmarks.js</key>
+		<string>search_bookmarks.js</string>
+		<key>search_history.js</key>
+		<string>search_history.js</string>
+		<key>search_tabs.js</key>
+		<string>search_tabs.js</string>
+		<key>switch_to_tab.js</key>
+		<string>switch_to_tab.js</string>
+	</dict>
+	<key>name</key>
+	<string>Tabman</string>
+	<key>objects</key>
+	<array>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>argumenttype</key>
+				<integer>0</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>tmt</string>
+				<key>queuedelay</key>
+				<integer>3</integer>
+				<key>runningsubtext</key>
+				<string>Searching tabs...</string>
+				<key>script</key>
+				<string>/usr/bin/osascript -l JavaScript "search_tabs.js" "{query}"</string>
+				<key>scriptargtype</key>
+				<integer>0</integer>
+				<key>subtext</key>
+				<string>Search across open tabs in Chrome, Arc &amp; Ghostty</string>
+				<key>text</key>
+				<string>Search Chrome Tabs 🦇</string>
+				<key>title</key>
+				<string>Search Tabs</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>tabs-script</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>argumenttype</key>
+				<integer>0</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>tmb</string>
+				<key>queuedelay</key>
+				<integer>3</integer>
+				<key>runningsubtext</key>
+				<string>Searching bookmarks...</string>
+				<key>script</key>
+				<string>/usr/bin/osascript -l JavaScript "search_bookmarks.js" "{query}"</string>
+				<key>scriptargtype</key>
+				<integer>0</integer>
+				<key>subtext</key>
+				<string>Search through all Chrome bookmarks</string>
+				<key>text</key>
+				<string>Search Chrome Bookmarks 🦇</string>
+				<key>title</key>
+				<string>Search Chrome Bookmarks</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>bookmarks-script</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>alfredfiltersresults</key>
+				<false/>
+				<key>argumenttype</key>
+				<integer>0</integer>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>keyword</key>
+				<string>tmh</string>
+				<key>queuedelay</key>
+				<integer>3</integer>
+				<key>runningsubtext</key>
+				<string>Searching history...</string>
+				<key>script</key>
+				<string>/usr/bin/osascript -l JavaScript "search_history.js" "{query}"</string>
+				<key>scriptargtype</key>
+				<integer>0</integer>
+				<key>subtext</key>
+				<string>Search through Chrome history</string>
+				<key>text</key>
+				<string>Search Chrome History 🦇</string>
+				<key>title</key>
+				<string>Search Chrome History</string>
+				<key>type</key>
+				<integer>0</integer>
+				<key>withspace</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.input.scriptfilter</string>
+			<key>uid</key>
+			<string>history-script</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>browser</key>
+				<string></string>
+				<key>spaces</key>
+				<false/>
+				<key>url</key>
+				<string>{query}</string>
+				<key>utf8</key>
+				<true/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.openurl</string>
+			<key>uid</key>
+			<string>browser-action</string>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
+				<key>concurrently</key>
+				<false/>
+				<key>escaping</key>
+				<integer>102</integer>
+				<key>script</key>
+				<string>/usr/bin/osascript -l JavaScript "switch_to_tab.js" "{query}"</string>
+				<key>scriptargtype</key>
+				<integer>0</integer>
+				<key>type</key>
+				<integer>0</integer>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.action.script</string>
+			<key>uid</key>
+			<string>switch-tab-action</string>
+		</dict>
+	</array>
+	<key>readme</key>
+	<string>The Dark Knight of tab search tools - a lightning-fast Alfred workflow that prowls through your open tabs (Chrome, Arc, Ghostty), plus Chrome bookmarks and history.</string>
+	<key>uidata</key>
+	<dict>
+		<key>bookmarks-script</key>
+		<dict>
+			<key>xpos</key>
+			<integer>100</integer>
+			<key>ypos</key>
+			<integer>250</integer>
+		</dict>
+		<key>browser-action</key>
+		<dict>
+			<key>xpos</key>
+			<integer>300</integer>
+			<key>ypos</key>
+			<integer>250</integer>
+		</dict>
+		<key>history-script</key>
+		<dict>
+			<key>xpos</key>
+			<integer>100</integer>
+			<key>ypos</key>
+			<integer>400</integer>
+		</dict>
+		<key>switch-tab-action</key>
+		<dict>
+			<key>xpos</key>
+			<integer>300</integer>
+			<key>ypos</key>
+			<integer>100</integer>
+		</dict>
+		<key>tabs-script</key>
+		<dict>
+			<key>xpos</key>
+			<integer>100</integer>
+			<key>ypos</key>
+			<integer>100</integer>
+		</dict>
+	</dict>
+	<key>version</key>
+	<string>1.2.0</string>
+	<key>webaddress</key>
+	<string>https://github.com/jguice/tabman</string>
 </dict>
 </plist>

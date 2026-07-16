@@ -1,10 +1,10 @@
 # Tabman 🦇
 
-The Dark Knight of Chrome search tools - a lightning-fast Alfred workflow that prowls through your tabs, bookmarks, and history across all Chrome profiles.
+The Dark Knight of tab search tools - a lightning-fast Alfred workflow that prowls through your open tabs (Chrome, Arc, Ghostty), plus Chrome bookmarks and history.
 
 ## Features
 
-- Search open tabs (`tmt`)
+- Search open tabs in Chrome, Arc & Ghostty (`tmt`)
 - Search bookmarks (`tmb`)
 - Search history (`tmh`)
 - Works across all Chrome profiles (Default and custom profiles)
@@ -19,14 +19,14 @@ The Dark Knight of Chrome search tools - a lightning-fast Alfred workflow that p
 
 ## Usage
 
-- `tmt <query>` - Search across all open Chrome tabs
+- `tmt <query>` - Search across all open Chrome, Arc & Ghostty tabs
 - `tmb <query>` - Search through all Chrome bookmarks
 - `tmh <query>` - Search through Chrome history
 
 ## Requirements
 
 - Alfred 5 with Powerpack
-- Google Chrome
+- Google Chrome, Arc, and/or Ghostty (apps that are not running are skipped)
 
 ## How it Works
 
