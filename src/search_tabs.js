@@ -1,5 +1,6 @@
 ObjC.import('CoreGraphics');
 ObjC.import('AppKit');
+ObjC.import('CoreImage');
 
 // Window-preview icons: matched rows show a screenshot of the window that
 // contains the tab, so visually distinct windows are quick to parse. Needs
@@ -173,26 +174,42 @@ function makePreviewProvider() {
 // images are left alone.
 function squareThumb(path) {
     try {
-        const img = $.NSImage.alloc.initWithContentsOfFile(path);
-        if (img.isNil()) return;
-        const w = img.size.width;
-        const h = img.size.height;
+        const ci = $.CIImage.imageWithContentsOfURL($.NSURL.fileURLWithPath(path));
+        if (ci.isNil()) return;
+        const ext = ci.extent;
+        const w = ext.size.width;
+        const h = ext.size.height;
         if (w === h) return;
-        const side = 288;
+        const side = 576;
         const scale = Math.min(side / w, side / h);
-        const dw = w * scale;
-        const dh = h * scale;
-        const out = $.NSImage.alloc.initWithSize($.NSMakeSize(side, side));
-        out.lockFocus;
-        img.drawInRectFromRectOperationFraction(
-            $.NSMakeRect((side - dw) / 2, (side - dh) / 2, dw, dh),
+
+        // Downscale with Lanczos in Core Image's linear working space:
+        // scaling in gamma-encoded space visibly darkens fine bright detail
+        // (terminal text is the worst case, measured ~6% darker).
+        const f = $.CIFilter.filterWithName('CILanczosScaleTransform');
+        f.setValueForKey(ci, 'inputImage');
+        f.setValueForKey(scale, 'inputScale');
+        f.setValueForKey(1.0, 'inputAspectRatio');
+        const scaledCI = f.valueForKey('outputImage');
+        const ctx = $.CIContext.contextWithOptions(undefined);
+        const cg = ctx.createCGImageFromRect(scaledCI, scaledCI.extent);
+        const rep = $.NSBitmapImageRep.alloc.initWithCGImage(cg);
+
+        // Composite 1:1 onto a transparent square canvas - no further
+        // resampling, so no further brightness shift.
+        const scaled = $.NSImage.alloc.initWithSize($.NSMakeSize(rep.pixelsWide, rep.pixelsHigh));
+        scaled.addRepresentation(rep);
+        const canvas = $.NSImage.alloc.initWithSize($.NSMakeSize(side, side));
+        canvas.lockFocus;
+        scaled.drawInRectFromRectOperationFraction(
+            $.NSMakeRect((side - rep.pixelsWide) / 2, (side - rep.pixelsHigh) / 2, rep.pixelsWide, rep.pixelsHigh),
             $.NSZeroRect,
             $.NSCompositingOperationSourceOver,
             1.0
         );
-        out.unlockFocus;
-        const rep = $.NSBitmapImageRep.imageRepWithData(out.TIFFRepresentation);
-        const png = rep.representationUsingTypeProperties($.NSBitmapImageFileTypePNG, $.NSDictionary.dictionary);
+        canvas.unlockFocus;
+        const outRep = $.NSBitmapImageRep.imageRepWithData(canvas.TIFFRepresentation);
+        const png = outRep.representationUsingTypeProperties($.NSBitmapImageFileTypePNG, $.NSDictionary.dictionary);
         png.writeToFileAtomically(path, true);
     } catch (e) {}
 }
