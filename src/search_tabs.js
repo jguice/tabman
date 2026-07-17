@@ -1,6 +1,9 @@
 ObjC.import('CoreGraphics');
 ObjC.import('AppKit');
 ObjC.import('CoreImage');
+eval($.NSString.stringWithContentsOfFileEncodingError(
+    $.NSFileManager.defaultManager.currentDirectoryPath.js + '/lib_favicons.js',
+    $.NSUTF8StringEncoding, null).js);
 
 // Window-preview icons: matched rows show a screenshot of the window that
 // contains the tab, so visually distinct windows are quick to parse. Needs
@@ -130,46 +133,9 @@ function makePreviewProvider() {
         return null;
     }
 
-    // Copy-aside a browser's locked Favicons database, reused for 5 minutes.
-    function ensureFaviconDb(appKey, dbPath) {
-        const dir = ensureCacheDir();
-        if (!dir) return null;
-        const dst = dir + '/favdb-' + appKey;
-        try {
-            shell.doShellScript('s=' + quoted(dbPath) + '; p=' + quoted(dst) + '; [ -f "$s" ] || exit 1; ' +
-                'if [ ! -s "$p" ] || [ $(( $(date +%s) - $(stat -f %m "$p") )) -gt 300 ]; then cp "$s" "$p"; fi');
-            return dst;
-        } catch (e) {
-            return null;
-        }
-    }
-
-    // Site favicon for a URL, extracted from the browser's own local Favicons
-    // database - no network, no third-party service. Cached per host; a .miss
-    // marker avoids re-querying hosts the browser has no icon for.
+    // Favicon lookups delegate to the shared lib (lib_favicons.js).
     function faviconForUrl(appKey, dbPath, url) {
-        const m = String(url).match(/^(https?):\/\/([^\/:]+)/i);
-        if (!m) return null;
-        const host = m[2];
-        const dir = ensureCacheDir();
-        if (!dir) return null;
-        const safe = host.replace(/[^A-Za-z0-9.-]/g, '_');
-        const icon = dir + '/fav-' + safe + '.png';
-        const fm = $.NSFileManager.defaultManager;
-        if (fm.fileExistsAtPath(icon)) return { path: icon };
-        if (fm.fileExistsAtPath(icon + '.miss')) return null;
-        const db = ensureFaviconDb(appKey, dbPath);
-        if (!db) return null;
-        try {
-            const like = (m[1] + '://' + host + '/%').replace(/'/g, "''");
-            shell.doShellScript('sqlite3 ' + quoted(db) +
-                ' "SELECT hex(fb.image_data) FROM icon_mapping im JOIN favicon_bitmaps fb ON fb.icon_id=im.icon_id' +
-                " WHERE im.page_url LIKE '" + like + "' ORDER BY fb.width DESC LIMIT 1\" | xxd -r -p > " + quoted(icon) +
-                '; [ -s ' + quoted(icon) + ' ] || { rm -f ' + quoted(icon) + '; touch ' + quoted(icon + '.miss') + '; }');
-        } catch (e) {
-            return null;
-        }
-        return fm.fileExistsAtPath(icon) ? { path: icon } : null;
+        return FaviconLib.faviconForUrl(appKey, dbPath, url);
     }
 
     function setCapturesEnabled(on) { capturesEnabled = on; }
@@ -388,7 +354,7 @@ function buildSnapshot(withCaptures) {
             const shell = Application.currentApplication();
             shell.includeStandardAdditions = true;
             const q = "'" + dir.replace(/'/g, "'\\''") + "'";
-            shell.doShellScript('find ' + q + ' \\( -name "tab-*.png" -o -name "win-*.png" -o -name "fav-*" \\) -mtime +7 -delete');
+            shell.doShellScript('find ' + q + ' \\( -name "tab-*.png" -o -name "win-*.png" -o -name "fav-*" -o -name "favdb-*" \\) -mtime +7 -delete');
         }
     } catch (e) {}
 

@@ -1,19 +1,37 @@
+ObjC.import('Foundation');
+eval($.NSString.stringWithContentsOfFileEncodingError(
+    $.NSFileManager.defaultManager.currentDirectoryPath.js + '/lib_favicons.js',
+    $.NSUTF8StringEncoding, null).js);
+
 function run(argv) {
     // Every whitespace-separated token must match somewhere, in any order (#5).
     const tokens = argv[0].toLowerCase().split(/\s+/).filter(Boolean);
     const results = [];
 
-    collectChromiumHistory('Chrome', '/Applications/Google Chrome.app',
+    collectChromiumHistory('Chrome', 'chrome', '/Applications/Google Chrome.app',
         '/Library/Application Support/Google/Chrome', tokens, results);
-    collectChromiumHistory('Brave', '/Applications/Brave Browser.app',
+    collectChromiumHistory('Brave', 'brave', '/Applications/Brave Browser.app',
         '/Library/Application Support/BraveSoftware/Brave-Browser', tokens, results);
-    collectChromiumHistory('Arc', '/Applications/Arc.app',
+    collectChromiumHistory('Arc', 'arc', '/Applications/Arc.app',
         '/Library/Application Support/Arc/User Data', tokens, results);
 
-    return JSON.stringify({ items: results });
+    // The same page often exists in several profiles or browsers; keep the
+    // first (most recent within its source) occurrence of each URL.
+    const seen = {};
+    const deduped = results.filter(function (item) {
+        if (seen[item.arg]) return false;
+        seen[item.arg] = true;
+        return true;
+    });
+
+    return JSON.stringify({ items: deduped });
 }
 
-function collectChromiumHistory(source, appPath, supportDir, tokens, results) {
+function supportDirFaviconDb(source, supportDir) {
+    return $.NSHomeDirectory().js + supportDir + '/Default/Favicons';
+}
+
+function collectChromiumHistory(source, appKey, appPath, supportDir, tokens, results) {
     try {
         const homeDir = $.NSHomeDirectory().js;
         const profilesDir = homeDir + supportDir;
@@ -31,20 +49,10 @@ function collectChromiumHistory(source, appPath, supportDir, tokens, results) {
             try {
                 if (!fm.fileExistsAtPath(historyFile)) return;
 
-                // The browser keeps the live database locked, so query a copy.
-                // The copy is reused for a minute so per-keystroke searches
-                // don't recopy a potentially large file.
-                const tempFile = '/tmp/tabman-history-' + source + '-' + index;
-                let needCopy = true;
-                if (fm.fileExistsAtPath(tempFile)) {
-                    const attrs = fm.attributesOfItemAtPathError(tempFile, null);
-                    const age = $.NSDate.date.timeIntervalSince1970 - attrs.fileModificationDate.timeIntervalSince1970;
-                    if (age < 60) needCopy = false;
-                }
-                if (needCopy) {
-                    if (fm.fileExistsAtPath(tempFile)) fm.removeItemAtPathError(tempFile, null);
-                    fm.copyItemAtPathToPathError(historyFile, tempFile, null);
-                }
+                // The browser keeps the live database locked, so query a copy,
+                // refreshed only when the source has actually changed.
+                const tempFile = FaviconLib.ensureDbCopy('history-' + source + '-' + index, historyFile);
+                if (!tempFile) return;
 
                 const where = tokens.map(function (t) {
                     const escaped = t.replace(/'/g, "''");
@@ -76,7 +84,8 @@ function collectChromiumHistory(source, appPath, supportDir, tokens, results) {
                         title: title,
                         subtitle: source + ' - ' + url,
                         arg: url,
-                        icon: { type: 'fileicon', path: appPath },
+                        icon: FaviconLib.faviconForUrl(appKey, supportDirFaviconDb(source, supportDir), url)
+                            || { type: 'fileicon', path: appPath },
                         text: { copy: url, largetype: title },
                         quicklookurl: url
                     });
