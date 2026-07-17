@@ -192,7 +192,7 @@ function squareThumb(path) {
 // ACTIVE tab, then prefer the tab's own last-seen shot, then the window
 // shot, then the app icon. (Used for Ghostty, where tabs have no favicon.)
 function resolveTabIcon(tabId, activeTabId, windowIcon, fallbackAppPath) {
-    if (tabId && tabId === activeTabId && windowIcon && windowIcon.path) {
+    if (tabId && tabId === activeTabId && isShot(windowIcon)) {
         previews.creditTab(tabId, windowIcon.path);
     }
     return previews.iconForTab(tabId, windowIcon, fallbackAppPath);
@@ -201,8 +201,14 @@ function resolveTabIcon(tabId, activeTabId, windowIcon, fallbackAppPath) {
 // Browser tab rows never show the shared window screenshot: a tab's own
 // remembered shot (from when it was the window's face), else the site
 // favicon from the browser's local database, else the app icon.
+// True only for a real image file, not a fileicon fallback (which also has
+// a path - to an app bundle, unrenderable as a plain image).
+function isShot(icon) {
+    return !!(icon && icon.path && !icon.type);
+}
+
 function resolveBrowserTabIcon(tabId, activeTabId, windowIcon, appKey, faviconDb, url, fallbackAppPath) {
-    if (tabId && tabId === activeTabId && windowIcon && windowIcon.path) {
+    if (tabId && tabId === activeTabId && isShot(windowIcon)) {
         previews.creditTab(tabId, windowIcon.path);
         return { path: windowIcon.path };
     }
