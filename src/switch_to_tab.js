@@ -84,10 +84,11 @@ function switchToArcTab(tabInfo) {
             const ids = windows[i].tabs.id();
             for (let j = 0; j < ids.length; j++) {
                 if (ids[j] === tabInfo.tabId) {
-                    const win = arc.windows.byId(windows[i].id());
+                    const windowId = windows[i].id();
+                    const win = arc.windows.byId(windowId);
                     arc.activate();
-                    try { win.index = 1; } catch (e) {}
                     win.tabs[j].select();
+                    raiseArcWindow(windowId);
                     return "Switched to tab successfully";
                 }
             }
@@ -98,6 +99,31 @@ function switchToArcTab(tabInfo) {
     } catch (error) {
         console.log('Error switching to Arc tab: ' + error);
         return "Failed to switch to Arc tab";
+    }
+}
+
+// Arc has no native way to raise a window: setting window.index throws
+// (read-only in practice) and its 'focus' command targets Arc spaces, not
+// windows. But Arc stamps each accessibility window with an AXIdentifier of
+// "big[Incognito]BrowserWindow-<window id>", so the exact window can be
+// raised through accessibility. Requires Alfred's Accessibility permission.
+// Limitation: windows on other macOS Spaces are absent from the accessibility
+// list and cannot be raised this way.
+function raiseArcWindow(windowId) {
+    try {
+        const proc = Application('System Events').processes['Arc'];
+        const wins = proc.windows();
+        for (let i = 0; i < wins.length; i++) {
+            try {
+                if (String(wins[i].attributes['AXIdentifier'].value()).indexOf(windowId) !== -1) {
+                    wins[i].actions['AXRaise'].perform();
+                    return;
+                }
+            } catch (e) {}
+        }
+        console.log('Arc window ' + windowId + ' not in accessibility list (other Space?)');
+    } catch (error) {
+        console.log('Error raising Arc window: ' + error);
     }
 }
 
