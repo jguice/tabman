@@ -289,10 +289,12 @@ function buildSnapshot() {
         if (dir) {
             $.NSString.alloc.initWithUTF8String(JSON.stringify(items))
                 .writeToFileAtomicallyEncodingError(dir + '/tabs-snapshot.json', true, $.NSUTF8StringEncoding, null);
-            // Prune per-tab credits that haven't been refreshed in a week.
+            // Prune everything cached (tab credits, window shots, favicons)
+            // once untouched for a week; live entries keep refreshing.
             const shell = Application.currentApplication();
             shell.includeStandardAdditions = true;
-            shell.doShellScript('find ' + "'" + dir.replace(/'/g, "'\\''") + "'" + ' -name "tab-*.png" -mtime +7 -delete');
+            const q = "'" + dir.replace(/'/g, "'\\''") + "'";
+            shell.doShellScript('find ' + q + ' \\( -name "tab-*.png" -o -name "win-*.png" -o -name "fav-*" \\) -mtime +7 -delete');
         }
     } catch (e) {}
 
