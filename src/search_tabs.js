@@ -113,7 +113,59 @@ function makePreviewProvider() {
         return { type: 'fileicon', path: fallbackAppPath };
     }
 
-    return { shotForWindow: shotForWindow, cacheDir: ensureCacheDir, creditTab: creditTab, iconForTab: iconForTab };
+    // Path to a tab's own credited shot, or null.
+    function tabShot(tabId) {
+        try {
+            const safe = String(tabId).replace(/[^A-Za-z0-9._-]/g, '_');
+            const path = ensureCacheDir() + '/tab-' + safe + '.png';
+            if ($.NSFileManager.defaultManager.fileExistsAtPath(path)) return path;
+        } catch (e) {}
+        return null;
+    }
+
+    // Copy-aside a browser's locked Favicons database, reused for 5 minutes.
+    function ensureFaviconDb(appKey, dbPath) {
+        const dir = ensureCacheDir();
+        if (!dir) return null;
+        const dst = dir + '/favdb-' + appKey;
+        try {
+            shell.doShellScript('s=' + quoted(dbPath) + '; p=' + quoted(dst) + '; [ -f "$s" ] || exit 1; ' +
+                'if [ ! -s "$p" ] || [ $(( $(date +%s) - $(stat -f %m "$p") )) -gt 300 ]; then cp "$s" "$p"; fi');
+            return dst;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // Site favicon for a URL, extracted from the browser's own local Favicons
+    // database - no network, no third-party service. Cached per host; a .miss
+    // marker avoids re-querying hosts the browser has no icon for.
+    function faviconForUrl(appKey, dbPath, url) {
+        const m = String(url).match(/^(https?):\/\/([^\/:]+)/i);
+        if (!m) return null;
+        const host = m[2];
+        const dir = ensureCacheDir();
+        if (!dir) return null;
+        const safe = host.replace(/[^A-Za-z0-9.-]/g, '_');
+        const icon = dir + '/fav-' + safe + '.png';
+        const fm = $.NSFileManager.defaultManager;
+        if (fm.fileExistsAtPath(icon)) return { path: icon };
+        if (fm.fileExistsAtPath(icon + '.miss')) return null;
+        const db = ensureFaviconDb(appKey, dbPath);
+        if (!db) return null;
+        try {
+            const like = (m[1] + '://' + host + '/%').replace(/'/g, "''");
+            shell.doShellScript('sqlite3 ' + quoted(db) +
+                ' "SELECT hex(fb.image_data) FROM icon_mapping im JOIN favicon_bitmaps fb ON fb.icon_id=im.icon_id' +
+                " WHERE im.page_url LIKE '" + like + "' ORDER BY fb.width DESC LIMIT 1\" | xxd -r -p > " + quoted(icon) +
+                '; [ -s ' + quoted(icon) + ' ] || { rm -f ' + quoted(icon) + '; touch ' + quoted(icon + '.miss') + '; }');
+        } catch (e) {
+            return null;
+        }
+        return fm.fileExistsAtPath(icon) ? { path: icon } : null;
+    }
+
+    return { shotForWindow: shotForWindow, cacheDir: ensureCacheDir, creditTab: creditTab, iconForTab: iconForTab, tabShot: tabShot, faviconForUrl: faviconForUrl };
 }
 
 // Composite a capture onto a transparent square canvas (aspect-fit, centered)
@@ -147,12 +199,27 @@ function squareThumb(path) {
 
 // Resolve a tab row's icon: credit the window's fresh shot to the window's
 // ACTIVE tab, then prefer the tab's own last-seen shot, then the window
-// shot, then the app icon.
+// shot, then the app icon. (Used for Ghostty, where tabs have no favicon.)
 function resolveTabIcon(tabId, activeTabId, windowIcon, fallbackAppPath) {
     if (tabId && tabId === activeTabId && windowIcon && windowIcon.path) {
         previews.creditTab(tabId, windowIcon.path);
     }
     return previews.iconForTab(tabId, windowIcon, fallbackAppPath);
+}
+
+// Browser tab rows never show the shared window screenshot: a tab's own
+// remembered shot (from when it was the window's face), else the site
+// favicon from the browser's local database, else the app icon.
+function resolveBrowserTabIcon(tabId, activeTabId, windowIcon, appKey, faviconDb, url, fallbackAppPath) {
+    if (tabId && tabId === activeTabId && windowIcon && windowIcon.path) {
+        previews.creditTab(tabId, windowIcon.path);
+        return { path: windowIcon.path };
+    }
+    const shot = previews.tabShot(tabId);
+    if (shot) return { path: shot };
+    const fav = previews.faviconForUrl(appKey, faviconDb, url);
+    if (fav) return fav;
+    return { type: 'fileicon', path: fallbackAppPath };
 }
 
 function previewIcon(owner, title, key, fallbackAppPath) {
@@ -210,8 +277,9 @@ function buildSnapshot() {
 
     // Chromium-family browsers share the same scripting interface; to add one,
     // add a collect call here and a CHROMIUM_APPS entry in switch_to_tab.js.
-    collectChromiumTabs('Google Chrome', 'chrome', items);
-    collectChromiumTabs('Brave Browser', 'brave', items);
+    const home = $.NSHomeDirectory().js;
+    collectChromiumTabs('Google Chrome', 'chrome', home + '/Library/Application Support/Google/Chrome/Default/Favicons', items);
+    collectChromiumTabs('Brave Browser', 'brave', home + '/Library/Application Support/BraveSoftware/Brave-Browser/Default/Favicons', items);
     collectArcTabs(items);
     collectArcLittleWindows(items);
     collectGhosttyTabs(items);
@@ -231,7 +299,7 @@ function buildSnapshot() {
     return items;
 }
 
-function collectChromiumTabs(appName, appKey, items) {
+function collectChromiumTabs(appName, appKey, faviconDb, items) {
     try {
         const browser = Application(appName);
         browser.includeStandardAdditions = true;
@@ -266,9 +334,9 @@ function collectChromiumTabs(appName, appKey, items) {
                         items.push({
                             title: title,
                             subtitle: profileInfo + ' - ' + url,
-                            icon: resolveTabIcon(tabIds[tabIndex], activeTabId,
+                            icon: resolveBrowserTabIcon(tabIds[tabIndex], activeTabId,
                                 windowIcon = windowIcon || previewIcon(appName, window.name(), appKey + windowIndex, '/Applications/' + appName + '.app'),
-                                '/Applications/' + appName + '.app'),
+                                appKey, faviconDb, url, '/Applications/' + appName + '.app'),
                             arg: JSON.stringify({
                                 app: appKey,
                                 windowIndex: windowIndex,
@@ -331,9 +399,9 @@ function collectArcTabs(items) {
                     items.push({
                         title: title,
                         subtitle: 'Arc - ' + url,
-                        icon: resolveTabIcon(ids[tabIndex], activeTabId,
+                        icon: resolveBrowserTabIcon(ids[tabIndex], activeTabId,
                             windowIcon = windowIcon || previewIcon('Arc', windows[windowIndex].name(), 'arc' + windowIndex, '/Applications/Arc.app'),
-                            '/Applications/Arc.app'),
+                            'arc', $.NSHomeDirectory().js + '/Library/Application Support/Arc/User Data/Default/Favicons', url, '/Applications/Arc.app'),
                         arg: JSON.stringify({ app: 'arc', tabId: ids[tabIndex], url: url }),
                         text: { copy: url, largetype: title },
                         quicklookurl: url,
