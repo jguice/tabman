@@ -178,6 +178,7 @@ function buildSnapshot() {
     collectChromiumTabs('Google Chrome', 'chrome', items);
     collectChromiumTabs('Brave Browser', 'brave', items);
     collectArcTabs(items);
+    collectArcLittleWindows(items);
     collectGhosttyTabs(items);
 
     try {
@@ -297,6 +298,36 @@ function collectArcTabs(items) {
         }
     } catch (error) {
         console.log('Error accessing Arc: ' + error);
+    }
+}
+
+// Little Arc windows are invisible to Arc's AppleScript dictionary; the
+// accessibility layer is the only way to see them (AXIdentifier
+// "littleBrowserWindow-<uuid>"). Titles only - AX exposes no URL. Needs the
+// Accessibility permission; silently skipped without it. Only windows on the
+// current macOS Space are visible to accessibility.
+function collectArcLittleWindows(items) {
+    try {
+        const proc = Application('System Events').processes['Arc'];
+        const wins = proc.windows();
+        for (let i = 0; i < wins.length; i++) {
+            try {
+                const axId = String(wins[i].attributes['AXIdentifier'].value());
+                if (axId.indexOf('littleBrowserWindow-') !== 0) continue;
+                const title = wins[i].name() || '';
+
+                items.push({
+                    title: title,
+                    subtitle: 'Arc - Little Arc',
+                    icon: previewIcon('Arc', title, 'arclittle' + i, '/Applications/Arc.app'),
+                    arg: JSON.stringify({ app: 'arclittle', axId: axId }),
+                    text: { copy: title, largetype: title },
+                    _search: ('arc little ' + title).toLowerCase()
+                });
+            } catch (windowError) {}
+        }
+    } catch (error) {
+        console.log('Error accessing Little Arc windows: ' + error);
     }
 }
 

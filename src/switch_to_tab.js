@@ -14,6 +14,9 @@ function run(argv) {
     if (tabInfo.app === 'arc') {
         return switchToArcTab(tabInfo);
     }
+    if (tabInfo.app === 'arclittle') {
+        return switchToLittleArcWindow(tabInfo);
+    }
     if (tabInfo.app === 'ghostty') {
         return switchToGhosttyTab(tabInfo);
     }
@@ -124,6 +127,28 @@ function raiseArcWindow(windowId) {
         console.log('Arc window ' + windowId + ' not in accessibility list (other Space?)');
     } catch (error) {
         console.log('Error raising Arc window: ' + error);
+    }
+}
+
+// Little Arc windows exist only at the accessibility layer; raise by their
+// stable AXIdentifier.
+function switchToLittleArcWindow(tabInfo) {
+    try {
+        Application('Arc').activate();
+        const proc = Application('System Events').processes['Arc'];
+        const wins = proc.windows();
+        for (let i = 0; i < wins.length; i++) {
+            try {
+                if (String(wins[i].attributes['AXIdentifier'].value()) === tabInfo.axId) {
+                    wins[i].actions['AXRaise'].perform();
+                    return "Switched to Little Arc window";
+                }
+            } catch (e) {}
+        }
+        return "Little Arc window not found (was it closed?)";
+    } catch (error) {
+        console.log('Error switching to Little Arc window: ' + error);
+        return "Failed to switch to Little Arc window";
     }
 }
 
