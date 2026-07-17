@@ -88,7 +88,32 @@ function makePreviewProvider() {
         }
     }
 
-    return { shotForWindow: shotForWindow, cacheDir: ensureCacheDir };
+    // Credit a window's shot to a specific tab: tabs that have been active
+    // accumulate their own last-seen previews (stale by design, like a tab
+    // overview). Copies are cheap; old credits are pruned by buildSnapshot.
+    function creditTab(tabId, shotPath) {
+        if (!shotPath || !tabId) return;
+        try {
+            const safe = String(tabId).replace(/[^A-Za-z0-9._-]/g, '_');
+            shell.doShellScript('cp ' + quoted(shotPath) + ' ' + quoted(ensureCacheDir() + '/tab-' + safe + '.png'));
+        } catch (e) {}
+    }
+
+    // Most specific available image for a tab: its own last-seen shot, else
+    // the window shot, else the app icon.
+    function iconForTab(tabId, windowIcon, fallbackAppPath) {
+        try {
+            const safe = String(tabId).replace(/[^A-Za-z0-9._-]/g, '_');
+            const path = ensureCacheDir() + '/tab-' + safe + '.png';
+            if ($.NSFileManager.defaultManager.fileExistsAtPath(path)) {
+                return { path: path };
+            }
+        } catch (e) {}
+        if (windowIcon) return windowIcon;
+        return { type: 'fileicon', path: fallbackAppPath };
+    }
+
+    return { shotForWindow: shotForWindow, cacheDir: ensureCacheDir, creditTab: creditTab, iconForTab: iconForTab };
 }
 
 // Composite a capture onto a transparent square canvas (aspect-fit, centered)
@@ -118,6 +143,16 @@ function squareThumb(path) {
         const png = rep.representationUsingTypeProperties($.NSBitmapImageFileTypePNG, $.NSDictionary.dictionary);
         png.writeToFileAtomically(path, true);
     } catch (e) {}
+}
+
+// Resolve a tab row's icon: credit the window's fresh shot to the window's
+// ACTIVE tab, then prefer the tab's own last-seen shot, then the window
+// shot, then the app icon.
+function resolveTabIcon(tabId, activeTabId, windowIcon, fallbackAppPath) {
+    if (tabId && tabId === activeTabId && windowIcon && windowIcon.path) {
+        previews.creditTab(tabId, windowIcon.path);
+    }
+    return previews.iconForTab(tabId, windowIcon, fallbackAppPath);
 }
 
 function previewIcon(owner, title, key, fallbackAppPath) {
@@ -186,6 +221,10 @@ function buildSnapshot() {
         if (dir) {
             $.NSString.alloc.initWithUTF8String(JSON.stringify(items))
                 .writeToFileAtomicallyEncodingError(dir + '/tabs-snapshot.json', true, $.NSUTF8StringEncoding, null);
+            // Prune per-tab credits that haven't been refreshed in a week.
+            const shell = Application.currentApplication();
+            shell.includeStandardAdditions = true;
+            shell.doShellScript('find ' + "'" + dir.replace(/'/g, "'\\''") + "'" + ' -name "tab-*.png" -mtime +7 -delete');
         }
     } catch (e) {}
 
@@ -216,6 +255,9 @@ function collectChromiumTabs(appName, appKey, items) {
                 }
 
                 let windowIcon = null;
+                const tabIds = window.tabs.id();
+                let activeTabId = null;
+                try { activeTabId = window.activeTab.id(); } catch (e) {}
                 window.tabs().forEach(function (tab, tabIndex) {
                     try {
                         const title = tab.title() || '';
@@ -224,7 +266,9 @@ function collectChromiumTabs(appName, appKey, items) {
                         items.push({
                             title: title,
                             subtitle: profileInfo + ' - ' + url,
-                            icon: windowIcon = windowIcon || previewIcon(appName, window.name(), appKey + windowIndex, '/Applications/' + appName + '.app'),
+                            icon: resolveTabIcon(tabIds[tabIndex], activeTabId,
+                                windowIcon = windowIcon || previewIcon(appName, window.name(), appKey + windowIndex, '/Applications/' + appName + '.app'),
+                                '/Applications/' + appName + '.app'),
                             arg: JSON.stringify({
                                 app: appKey,
                                 windowIndex: windowIndex,
@@ -269,6 +313,8 @@ function collectArcTabs(items) {
                 const ids = windows[windowIndex].tabs.id();
                 const locations = windows[windowIndex].tabs.location();
                 let windowIcon = null;
+                let activeTabId = null;
+                try { activeTabId = windows[windowIndex].activeTab.id(); } catch (e) {}
 
                 for (let tabIndex = 0; tabIndex < titles.length; tabIndex++) {
                     // Arc mirrors sidebar pins and "top apps" into every
@@ -285,7 +331,9 @@ function collectArcTabs(items) {
                     items.push({
                         title: title,
                         subtitle: 'Arc - ' + url,
-                        icon: windowIcon = windowIcon || previewIcon('Arc', windows[windowIndex].name(), 'arc' + windowIndex, '/Applications/Arc.app'),
+                        icon: resolveTabIcon(ids[tabIndex], activeTabId,
+                            windowIcon = windowIcon || previewIcon('Arc', windows[windowIndex].name(), 'arc' + windowIndex, '/Applications/Arc.app'),
+                            '/Applications/Arc.app'),
                         arg: JSON.stringify({ app: 'arc', tabId: ids[tabIndex], url: url }),
                         text: { copy: url, largetype: title },
                         quicklookurl: url,
@@ -346,6 +394,8 @@ function collectGhosttyTabs(items) {
                 const names = windows[windowIndex].tabs.name();
                 const ids = windows[windowIndex].tabs.id();
                 let windowIcon = null;
+                let activeTabId = null;
+                try { activeTabId = windows[windowIndex].selectedTab.id(); } catch (e) {}
 
                 for (let tabIndex = 0; tabIndex < names.length; tabIndex++) {
                     const name = names[tabIndex] || '';
@@ -353,7 +403,9 @@ function collectGhosttyTabs(items) {
                     items.push({
                         title: name,
                         subtitle: 'Ghostty',
-                        icon: windowIcon = windowIcon || previewIcon('Ghostty', windows[windowIndex].name(), 'ghostty' + windowIndex, '/Applications/Ghostty.app'),
+                        icon: resolveTabIcon(ids[tabIndex], activeTabId,
+                            windowIcon = windowIcon || previewIcon('Ghostty', windows[windowIndex].name(), 'ghostty' + windowIndex, '/Applications/Ghostty.app'),
+                            '/Applications/Ghostty.app'),
                         arg: JSON.stringify({ app: 'ghostty', tabId: ids[tabIndex] }),
                         text: { copy: name, largetype: name },
                         _search: ('ghostty ' + name).toLowerCase()
