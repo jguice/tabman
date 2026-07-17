@@ -318,7 +318,7 @@ function collectArcLittleWindows(items) {
 
                 items.push({
                     title: title,
-                    subtitle: 'Arc - Little Arc',
+                    subtitle: 'Little Arc',
                     icon: previewIcon('Arc', title, 'arclittle' + i, '/Applications/Arc.app'),
                     arg: JSON.stringify({ app: 'arclittle', axId: axId }),
                     text: { copy: title, largetype: title },
