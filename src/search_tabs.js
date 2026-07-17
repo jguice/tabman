@@ -14,6 +14,7 @@ function makePreviewProvider() {
 
     let cacheDir = null;
     let cgWindows = null;
+    let capturesEnabled = true;
     const assigned = {};
     const memo = {};
 
@@ -74,6 +75,11 @@ function makePreviewProvider() {
         const dir = ensureCacheDir();
         if (!dir) return null;
         const path = dir + '/win-' + win.kCGWindowNumber + '.png';
+        if (!capturesEnabled) {
+            // Fast build: use whatever shot already exists, never capture.
+            memo[key] = $.NSFileManager.defaultManager.fileExistsAtPath(path) ? path : null;
+            return memo[key];
+        }
         try {
             shell.doShellScript(
                 "p=" + quoted(path) + "; " +
@@ -166,7 +172,9 @@ function makePreviewProvider() {
         return fm.fileExistsAtPath(icon) ? { path: icon } : null;
     }
 
-    return { shotForWindow: shotForWindow, cacheDir: ensureCacheDir, creditTab: creditTab, iconForTab: iconForTab, tabShot: tabShot, faviconForUrl: faviconForUrl };
+    function setCapturesEnabled(on) { capturesEnabled = on; }
+
+    return { shotForWindow: shotForWindow, cacheDir: ensureCacheDir, creditTab: creditTab, iconForTab: iconForTab, tabShot: tabShot, faviconForUrl: faviconForUrl, setCapturesEnabled: setCapturesEnabled };
 }
 
 // Composite a capture onto a transparent square canvas (aspect-fit, centered)
@@ -245,13 +253,57 @@ function previewIcon(owner, title, key, fallbackAppPath) {
     return { type: 'fileicon', path: fallbackAppPath };
 }
 
-const SNAPSHOT_TTL_SECONDS = 8;
+// Backstop for the fingerprint's one blind spot (opening/closing a
+// background browser tab changes no window title): force a refresh once the
+// snapshot is this old, even with a matching fingerprint.
+const FINGERPRINT_BACKSTOP_SECONDS = 60;
+
+// ~15ms summary of the current window state for our apps: any window
+// open/close or title change (tab switches retitle the window) alters it.
+// Window names need the Screen Recording permission; without it the
+// fingerprint still catches window opens/closes.
+function windowFingerprint() {
+    try {
+        const r = $.CGWindowListCopyWindowInfo(0, 0);
+        const wins = (ObjC.deepUnwrap(ObjC.castRefToObject(r)) || []);
+        const ours = { 'Ghostty': 1, 'Arc': 1, 'Google Chrome': 1, 'Brave Browser': 1 };
+        return wins
+            .filter(function (w) { return w.kCGWindowLayer === 0 && ours[w.kCGWindowOwnerName]; })
+            .map(function (w) {
+                // Strip animated status glyphs (Ghostty spinners) so live
+                // terminal sessions don't churn the fingerprint.
+                const stable = String(w.kCGWindowName || '').replace(/^[^A-Za-z0-9]+/, '');
+                return w.kCGWindowOwnerName + ':' + w.kCGWindowNumber + ':' + stable;
+            })
+            .sort()
+            .join('|');
+    } catch (e) {
+        return 'fingerprint-error';
+    }
+}
 
 function run(argv) {
+    if (argv[0] === '--rebuild') {
+        buildSnapshot(true);
+        return 'rebuilt';
+    }
+
     // Every whitespace-separated token must match somewhere, in any order,
     // so "natera site" finds "Natera Conference Site" (#5).
     const tokens = argv[0].toLowerCase().split(/\s+/).filter(Boolean);
-    const items = loadSnapshot() || buildSnapshot();
+    const snap = loadSnapshot();
+    let items;
+    if (!snap) {
+        // First-ever search: build fast (no captures block the list), then
+        // let a background rebuild fill in the screenshots.
+        items = buildSnapshot(false);
+        scheduleRebuild();
+    } else {
+        items = snap.items;
+        if (snap.fingerprint !== windowFingerprint() || snap.age > FINGERPRINT_BACKSTOP_SECONDS) {
+            scheduleRebuild();
+        }
+    }
 
     const results = items.filter(function (item) {
         return tokens.every(function (token) {
@@ -271,8 +323,9 @@ function run(argv) {
     return JSON.stringify({ items: results });
 }
 
-// The full tab list (with preview icons) is snapshotted for a few seconds so
-// each keystroke filters in-process instead of re-walking every app.
+// The full tab list (with preview icons) is snapshotted; any existing
+// snapshot is served regardless of age (freshness comes from background
+// rebuilds).
 function loadSnapshot() {
     try {
         const dir = previews.cacheDir();
@@ -282,14 +335,36 @@ function loadSnapshot() {
         if (!fm.fileExistsAtPath(path)) return null;
         const attrs = fm.attributesOfItemAtPathError(path, null);
         const age = $.NSDate.date.timeIntervalSince1970 - attrs.fileModificationDate.timeIntervalSince1970;
-        if (age > SNAPSHOT_TTL_SECONDS) return null;
-        return JSON.parse($.NSString.stringWithContentsOfFileEncodingError(path, $.NSUTF8StringEncoding, null).js);
+        let fingerprint = '';
+        try {
+            fingerprint = $.NSString.stringWithContentsOfFileEncodingError(dir + '/tabs-fingerprint.txt', $.NSUTF8StringEncoding, null).js || '';
+        } catch (e) {}
+        return { items: JSON.parse($.NSString.stringWithContentsOfFileEncodingError(path, $.NSUTF8StringEncoding, null).js), age: age, fingerprint: fingerprint };
     } catch (e) {
         return null;
     }
 }
 
-function buildSnapshot() {
+// Rebuild the snapshot in a detached background process (one at a time via a
+// lock directory; stale locks from crashed rebuilds expire after a minute).
+function scheduleRebuild() {
+    try {
+        const shell = Application.currentApplication();
+        shell.includeStandardAdditions = true;
+        const dir = previews.cacheDir();
+        if (!dir) return;
+        const me = $.NSFileManager.defaultManager.currentDirectoryPath.js + '/search_tabs.js';
+        const q = function (s) { return "'" + String(s).replace(/'/g, "'\\''") + "'"; };
+        shell.doShellScript(
+            'l=' + q(dir + '/rebuild.lock') + '; s=' + q(me) + '; [ -f "$s" ] || exit 0; ' +
+            'if [ -d "$l" ] && [ $(( $(date +%s) - $(stat -f %m "$l") )) -gt 60 ]; then rm -rf "$l"; fi; ' +
+            'if mkdir "$l" 2>/dev/null; then ' +
+            '( /usr/bin/osascript -l JavaScript "$s" --rebuild; rmdir "$l" ) >/dev/null 2>&1 & fi');
+    } catch (e) {}
+}
+
+function buildSnapshot(withCaptures) {
+    previews.setCapturesEnabled(withCaptures !== false);
     const items = [];
 
     // Chromium-family browsers share the same scripting interface; to add one,
@@ -306,6 +381,8 @@ function buildSnapshot() {
         if (dir) {
             $.NSString.alloc.initWithUTF8String(JSON.stringify(items))
                 .writeToFileAtomicallyEncodingError(dir + '/tabs-snapshot.json', true, $.NSUTF8StringEncoding, null);
+            $.NSString.alloc.initWithUTF8String(windowFingerprint())
+                .writeToFileAtomicallyEncodingError(dir + '/tabs-fingerprint.txt', true, $.NSUTF8StringEncoding, null);
             // Prune everything cached (tab credits, window shots, favicons)
             // once untouched for a week; live entries keep refreshing.
             const shell = Application.currentApplication();
