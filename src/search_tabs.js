@@ -259,15 +259,25 @@ function collectArcTabs(items) {
 
         const windows = arc.windows;
         const windowCount = windows.length;
+        const seenTabIds = {};
         for (let windowIndex = 0; windowIndex < windowCount; windowIndex++) {
             try {
                 // Bulk-fetch per window: one Apple Event per property
                 const titles = windows[windowIndex].tabs.title();
                 const urls = windows[windowIndex].tabs.url();
                 const ids = windows[windowIndex].tabs.id();
+                const locations = windows[windowIndex].tabs.location();
                 let windowIcon = null;
 
                 for (let tabIndex = 0; tabIndex < titles.length; tabIndex++) {
+                    // Arc mirrors sidebar pins and "top apps" into every
+                    // window's tab list; only 'unpinned' tabs are actually
+                    // open tabs (pins are searchable via tmb). Windows
+                    // sharing a Space also share their open tabs - dedupe.
+                    if (locations[tabIndex] !== 'unpinned') continue;
+                    if (seenTabIds[ids[tabIndex]]) continue;
+                    seenTabIds[ids[tabIndex]] = true;
+
                     const title = titles[tabIndex] || '';
                     const url = urls[tabIndex] || '';
 
