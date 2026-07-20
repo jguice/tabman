@@ -292,7 +292,21 @@ function run(argv) {
         };
     });
 
-    return JSON.stringify({ items: results });
+    const out = { items: results };
+    // While a background rebuild is in flight, have Alfred re-run this
+    // filter (same query) until the fresh snapshot lands; otherwise results
+    // typed during a rebuild stay frozen on the stale list.
+    if (rebuildInFlight()) out.rerun = 0.5;
+    return JSON.stringify(out);
+}
+
+function rebuildInFlight() {
+    try {
+        const dir = previews.cacheDir();
+        return !!dir && $.NSFileManager.defaultManager.fileExistsAtPath(dir + '/rebuild.lock');
+    } catch (e) {
+        return false;
+    }
 }
 
 // The full tab list (with preview icons) is snapshotted; any existing
