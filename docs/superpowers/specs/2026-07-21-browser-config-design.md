@@ -27,12 +27,26 @@ four checkboxes, all default-on to match current behavior:
 | Arc            | `enable_arc`     | tmt, tmb, tmh      |
 | Ghostty        | `enable_ghostty` | tmt (only has tabs)|
 
-Checkbox variables arrive in the scripts' environment as `"1"`/`"0"`. Each
-script gates its per-browser collector on the corresponding variable. A
-shared helper (in `lib_favicons.js`, which every script already evals)
-reads them: `enabledBrowsers()` returning e.g.
+Checkbox variables arrive in the scripts' environment as `"1"`/`"0"`. In
+`info.plist`, each `userconfigurationconfig` item is a dict with
+`type: checkbox`, `variable`, empty `label`, and a `config` dict of
+`default` (plist boolean true), `required: false`, and `text` holding the
+user-visible caption ("Google Chrome", etc.).
+
+Each script gates its per-browser collector on the corresponding variable.
+A shared helper (in `lib_favicons.js`, which the three search scripts
+already eval; `switch_to_tab.js` does not and needs no gating) reads them:
+`enabledBrowsers()` returning e.g.
 `{ chrome: true, brave: false, arc: true, ghostty: true }`. Unset variables
 (running outside Alfred, or pre-upgrade installs) default to enabled.
+
+In `search_bookmarks.js`, disabled browsers are removed from the `sources`
+array up front, before `allFiles` (and thus the bookmark snapshot
+fingerprint) is computed. This is load-bearing: the snapshot cache is keyed
+only by source-file mtimes, so gating collect calls alone would keep
+serving a disabled browser's cached rows until an unrelated mtime change.
+Dropping the source's paths from the fingerprint makes toggles
+self-invalidate the cache.
 
 Unchecking a browser removes it everywhere: tabs, bookmarks, history, and
 the `tmt` window fingerprint. There is no primary-browser or priority
@@ -44,23 +58,40 @@ a "Primary browser" popup is a possible future additive change.)
 
 `windowFingerprint()` only includes windows of enabled apps, and the enabled
 set itself is appended to the fingerprint string (e.g. suffix
-`|enabled:arc,ghostty`). Toggling a checkbox therefore mismatches the stored
-fingerprint, triggering the normal background rebuild; disabled browsers
-disappear on the next rebuild rather than lingering in the snapshot.
+`|enabled:arc,ghostty`). The suffix is appended outside the try/catch so the
+`fingerprint-error` fallback still carries it (otherwise two consecutive CG
+failures would compare equal across a toggle and skip invalidation).
+Toggling a checkbox therefore mismatches the stored fingerprint and triggers
+the normal background rebuild. A toggle while a rebuild is already in flight
+converges one rebuild later (the in-flight rebuild writes the old set's
+fingerprint, the next compare mismatches again); no loop.
+
+Independently of rebuild timing, `run()` filters served snapshot items by
+the enabled set at output time (each item's `arg` JSON carries `app`;
+`arclittle` counts as Arc), so unchecking a browser removes its rows from
+results instantly.
 
 ### History recency sort (`tmh`)
 
-`search_history.js` adds `last_visit_time` to the SELECT, carries it on each
-result row, and sorts all collected rows by it (descending) before the
-existing URL dedupe. Per-source LIMIT 20 per profile stays. With one browser
-checked this is pure single-browser history; with several, they interleave
-by actual recency instead of source order.
+`search_history.js` selects `last_visit_time, title, url` (timestamp FIRST:
+the line parser splits on the last tab because titles may contain tabs and
+the URL must stay the final column; the timestamp is taken by splitting on
+the first tab). Rows carry the timestamp and all collected rows sort by it
+descending before the existing URL dedupe, so the most recent duplicate
+wins. `last_visit_time` is microseconds since 1601-01-01 UTC in Chrome,
+Brave, and Arc alike; directly comparable. Per-source LIMIT 20 per profile
+stays. With one browser checked this is pure single-browser history; with
+several, they interleave by actual recency instead of source order.
 
 ### Cross-reboot snapshot guard (`tmt`)
 
-`loadSnapshot()` computes boot time as
-`NSDate.date.timeIntervalSince1970 - NSProcessInfo.processInfo.systemUptime`
-and returns `null` when the snapshot file's mtime predates it. `run()` then
+`loadSnapshot()` reads the real boot time from `sysctl -n kern.boottime`
+(parsing the `sec = N` field) and returns `null` when the snapshot file's
+mtime predates it. `NSProcessInfo.systemUptime` is NOT usable here: it
+counts only awake time, so `now - systemUptime` drifts later than the true
+boot time by cumulative sleep (24 minutes measured within hours of boot),
+which would falsely discard good same-boot snapshots after sleep and force
+the slow synchronous path on every wake. `run()` then
 takes the existing first-run path: fast synchronous build (no captures),
 background rebuild fills in previews. Guarantees no rows from a previous
 boot are ever served or actionable.
