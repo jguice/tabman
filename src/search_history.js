@@ -8,12 +8,18 @@ function run(argv) {
     const tokens = argv[0].toLowerCase().split(/\s+/).filter(Boolean);
     const results = [];
 
-    collectChromiumHistory('Chrome', 'chrome', '/Applications/Google Chrome.app',
+    const enabled = FaviconLib.enabledBrowsers();
+    if (enabled.chrome) collectChromiumHistory('Chrome', 'chrome', '/Applications/Google Chrome.app',
         '/Library/Application Support/Google/Chrome', tokens, results);
-    collectChromiumHistory('Brave', 'brave', '/Applications/Brave Browser.app',
+    if (enabled.brave) collectChromiumHistory('Brave', 'brave', '/Applications/Brave Browser.app',
         '/Library/Application Support/BraveSoftware/Brave-Browser', tokens, results);
-    collectChromiumHistory('Arc', 'arc', '/Applications/Arc.app',
+    if (enabled.arc) collectChromiumHistory('Arc', 'arc', '/Applications/Arc.app',
         '/Library/Application Support/Arc/User Data', tokens, results);
+
+    // Cross-source recency: each per-profile query is already ordered, but
+    // concatenation is not. Sort globally by last visit, THEN dedupe, so
+    // the most recent occurrence of a URL wins.
+    results.sort(function (a, b) { return b.ts - a.ts; });
 
     // The same page often exists in several profiles or browsers; keep the
     // first (most recent within its source) occurrence of each URL.
@@ -22,6 +28,9 @@ function run(argv) {
         if (seen[item.arg]) return false;
         seen[item.arg] = true;
         return true;
+    }).map(function (item) {
+        delete item.ts;
+        return item;
     });
 
     return JSON.stringify({ items: deduped });
@@ -62,7 +71,7 @@ function collectChromiumHistory(source, appKey, appPath, supportDir, tokens, res
                 const task = $.NSTask.alloc.init;
                 task.setLaunchPath('/usr/bin/sqlite3');
                 task.setArguments(['-separator', '\t', tempFile,
-                    'SELECT title, url FROM urls WHERE ' + where +
+                    'SELECT last_visit_time, title, url FROM urls WHERE ' + where +
                     ' ORDER BY last_visit_time DESC LIMIT 20;']);
                 const pipe = $.NSPipe.pipe;
                 task.standardOutput = pipe;
@@ -73,14 +82,21 @@ function collectChromiumHistory(source, appKey, appPath, supportDir, tokens, res
 
                 output.split('\n').forEach(function (line) {
                     if (!line.trim()) return;
-                    // Split on the LAST tab: titles may contain tabs, URLs don't.
-                    const cut = line.lastIndexOf('\t');
+                    // Column order is ts<TAB>title<TAB>url. Take ts at the
+                    // FIRST tab; split the rest on its LAST tab because
+                    // titles may contain tabs, URLs don't.
+                    const firstCut = line.indexOf('\t');
+                    if (firstCut === -1) return;
+                    const ts = Number(line.slice(0, firstCut)) || 0;
+                    const rest = line.slice(firstCut + 1);
+                    const cut = rest.lastIndexOf('\t');
                     if (cut === -1) return;
-                    const url = line.slice(cut + 1);
-                    const title = line.slice(0, cut) || url;
+                    const url = rest.slice(cut + 1);
+                    const title = rest.slice(0, cut) || url;
                     if (!url) return;
 
                     results.push({
+                        ts: ts,
                         title: title,
                         subtitle: source + ' - ' + url,
                         arg: url,
