@@ -99,7 +99,25 @@ var FaviconLib = (function () {
         } catch (e) {}
     }
 
+    // Browser enable toggles from Alfred's workflow configuration
+    // (checkboxes arrive as "1"/"0" env vars). Unset means enabled, so CLI
+    // runs and pre-upgrade installs behave like all-on.
+    function enabledBrowsers() {
+        const env = $.NSProcessInfo.processInfo.environment;
+        function on(name) {
+            try {
+                const v = env.objectForKey(name);
+                if (v.isNil()) return true;
+                return v.js !== '0';
+            } catch (e) {
+                return true;
+            }
+        }
+        return { chrome: on('enable_chrome'), brave: on('enable_brave'),
+                 arc: on('enable_arc'), ghostty: on('enable_ghostty') };
+    }
+
     return { quoted: quoted, ensureCacheDir: ensureCacheDir, ensureDbCopy: ensureDbCopy,
              faviconForUrl: faviconForUrl, fileFingerprint: fileFingerprint,
-             readJSON: readJSON, writeJSON: writeJSON };
+             readJSON: readJSON, writeJSON: writeJSON, enabledBrowsers: enabledBrowsers };
 })();
