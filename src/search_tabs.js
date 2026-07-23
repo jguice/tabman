@@ -344,9 +344,10 @@ function bootTimeSeconds() {
     }
 }
 
-// The full tab list (with preview icons) is snapshotted; any existing
+// The full tab list (with preview icons) is snapshotted; any same-boot
 // snapshot is served regardless of age (freshness comes from background
-// rebuilds).
+// rebuilds). A snapshot from a previous boot is discarded because window
+// and tab ids get reused.
 function loadSnapshot() {
     try {
         const dir = previews.cacheDir();

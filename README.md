@@ -20,8 +20,8 @@ The Dark Knight of tab search tools - a lightning-fast Alfred workflow that prow
 ## Usage
 
 - `tmt <query>` - Search across all open Chrome, Arc & Ghostty tabs
-- `tmb <query>` - Search through all Chrome bookmarks
-- `tmh <query>` - Search through Chrome history
+- `tmb <query>` - Search bookmarks across your enabled browsers (Chrome, Brave, Arc)
+- `tmh <query>` - Search history across your enabled browsers (Chrome, Brave, Arc)
 
 ## Configuration
 

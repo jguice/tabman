@@ -21,8 +21,9 @@ function run(argv) {
     // the most recent occurrence of a URL wins.
     results.sort(function (a, b) { return b.ts - a.ts; });
 
-    // The same page often exists in several profiles or browsers; keep the
-    // first (most recent within its source) occurrence of each URL.
+    // The same page often exists in several profiles or browsers; results
+    // are already sorted globally by recency above, so keeping the first
+    // occurrence of each URL keeps the globally most recent one.
     const seen = {};
     const deduped = results.filter(function (item) {
         if (seen[item.arg]) return false;
