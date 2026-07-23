@@ -235,11 +235,18 @@ const FINGERPRINT_BACKSTOP_SECONDS = 60;
 // Window names need the Screen Recording permission; without it the
 // fingerprint still catches window opens/closes.
 function windowFingerprint() {
+    const enabled = FaviconLib.enabledBrowsers();
+    const OWNERS = { chrome: 'Google Chrome', brave: 'Brave Browser', arc: 'Arc', ghostty: 'Ghostty' };
+    // Appended outside the try/catch: even the error fallback must change
+    // when toggles change, or a toggle during CG failures skips invalidation.
+    const suffix = '|enabled:' + Object.keys(OWNERS).filter(function (k) { return enabled[k]; }).join(',');
+    let base;
     try {
         const r = $.CGWindowListCopyWindowInfo(0, 0);
         const wins = (ObjC.deepUnwrap(ObjC.castRefToObject(r)) || []);
-        const ours = { 'Ghostty': 1, 'Arc': 1, 'Google Chrome': 1, 'Brave Browser': 1 };
-        return wins
+        const ours = {};
+        Object.keys(OWNERS).forEach(function (k) { if (enabled[k]) ours[OWNERS[k]] = 1; });
+        base = wins
             .filter(function (w) { return w.kCGWindowLayer === 0 && ours[w.kCGWindowOwnerName]; })
             .map(function (w) {
                 // Strip animated status glyphs (Ghostty spinners) so live
@@ -250,8 +257,9 @@ function windowFingerprint() {
             .sort()
             .join('|');
     } catch (e) {
-        return 'fingerprint-error';
+        base = 'fingerprint-error';
     }
+    return base + suffix;
 }
 
 function run(argv) {
@@ -276,6 +284,19 @@ function run(argv) {
             scheduleRebuild();
         }
     }
+
+    // Instant toggle response: the snapshot may still contain a browser
+    // that was just unchecked (rebuilds lag by design), so filter served
+    // rows by the enabled set every run.
+    const enabled = FaviconLib.enabledBrowsers();
+    items = items.filter(function (item) {
+        try {
+            const app = JSON.parse(item.arg).app;
+            return enabled[app === 'arclittle' ? 'arc' : app] !== false;
+        } catch (e) {
+            return true;
+        }
+    });
 
     const results = items.filter(function (item) {
         return tokens.every(function (token) {
@@ -355,12 +376,13 @@ function buildSnapshot(withCaptures) {
 
     // Chromium-family browsers share the same scripting interface; to add one,
     // add a collect call here and a CHROMIUM_APPS entry in switch_to_tab.js.
+    const enabled = FaviconLib.enabledBrowsers();
     const home = $.NSHomeDirectory().js;
-    collectChromiumTabs('Google Chrome', 'chrome', home + '/Library/Application Support/Google/Chrome/Default/Favicons', items);
-    collectChromiumTabs('Brave Browser', 'brave', home + '/Library/Application Support/BraveSoftware/Brave-Browser/Default/Favicons', items);
-    collectArcTabs(items);
-    collectArcLittleWindows(items);
-    collectGhosttyTabs(items);
+    if (enabled.chrome) collectChromiumTabs('Google Chrome', 'chrome', home + '/Library/Application Support/Google/Chrome/Default/Favicons', items);
+    if (enabled.brave) collectChromiumTabs('Brave Browser', 'brave', home + '/Library/Application Support/BraveSoftware/Brave-Browser/Default/Favicons', items);
+    if (enabled.arc) collectArcTabs(items);
+    if (enabled.arc) collectArcLittleWindows(items);
+    if (enabled.ghostty) collectGhosttyTabs(items);
 
     try {
         const dir = previews.cacheDir();
