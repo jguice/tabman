@@ -8,6 +8,11 @@ function run(argv) {
     const tokens = argv[0].toLowerCase().split(/\s+/).filter(Boolean);
     const home = $.NSHomeDirectory().js;
 
+    // Disabled browsers drop out BEFORE the fingerprint is computed: the
+    // snapshot cache is keyed by source-file mtimes only, so removing a
+    // source's paths from the fingerprint is what invalidates the cache on
+    // toggle.
+    const enabled = FaviconLib.enabledBrowsers();
     const sources = [
         chromiumSource('Chrome', 'chrome', '/Applications/Google Chrome.app',
             home + '/Library/Application Support/Google/Chrome'),
@@ -19,7 +24,7 @@ function run(argv) {
             files: [home + '/Library/Application Support/Arc/StorableSidebar.json'],
             collect: collectArcBookmarks
         }
-    ];
+    ].filter(function (s) { return enabled[s.appKey]; });
 
     // Bookmarks live in plain files, so freshness is exact: reparse only when
     // a source file's mtime changes.
