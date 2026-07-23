@@ -23,6 +23,15 @@ The Dark Knight of tab search tools - a lightning-fast Alfred workflow that prow
 - `tmb <query>` - Search through all Chrome bookmarks
 - `tmh <query>` - Search through Chrome history
 
+## Configuration
+
+Open the workflow in Alfred Preferences and click "Configure Workflow". One
+checkbox per browser (Google Chrome, Brave Browser, Arc, Ghostty; all on by
+default). Unchecking a browser removes it everywhere it appears: its tabs
+from `tmt`, bookmarks from `tmb`, and history from `tmh`. Ghostty only has
+tabs. History results are sorted by last visit time across all enabled
+browsers.
+
 ## Requirements
 
 - Alfred 5 with Powerpack
