@@ -107,10 +107,14 @@ boot are ever served or actionable.
 
 - CLI runs of each script with `enable_*` env vars set to `0`/`1`/unset,
   asserting sources appear/disappear (seeded scratch cache for `tmt`, as in
-  the rerun fix).
+  the rerun fix). For `tmt`, also assert output-time filtering: a snapshot
+  containing a disabled browser must not surface its rows.
+- `tmb` toggle invalidation: build the bookmark snapshot with all browsers,
+  disable one, assert its rows are gone on the next run without any source
+  mtime change.
 - `tmh` ordering: with two browsers enabled, assert output order matches
   descending `last_visit_time` across sources.
-- Reboot guard: seed a snapshot, backdate its mtime to before boot time
+- Reboot guard: seed a snapshot, backdate its mtime to before `kern.boottime`
   (`touch -t`), assert `loadSnapshot` ignores it and a fresh build runs.
 - End-to-end: build + reinstall per CLAUDE.md, toggle checkboxes in Alfred's
   Configure Workflow sheet, verify tmt/tmb/tmh.
