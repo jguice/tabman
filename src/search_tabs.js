@@ -330,6 +330,20 @@ function rebuildInFlight() {
     }
 }
 
+// Real wall-clock boot time. NSProcessInfo.systemUptime is unusable here:
+// it counts only awake time, so now-minus-uptime drifts later than the true
+// boot by cumulative sleep and would falsely discard same-boot snapshots.
+function bootTimeSeconds() {
+    try {
+        const shell = Application.currentApplication();
+        shell.includeStandardAdditions = true;
+        const m = shell.doShellScript('/usr/sbin/sysctl -n kern.boottime').match(/sec = (\d+)/);
+        return m ? Number(m[1]) : 0;
+    } catch (e) {
+        return 0;
+    }
+}
+
 // The full tab list (with preview icons) is snapshotted; any existing
 // snapshot is served regardless of age (freshness comes from background
 // rebuilds).
@@ -341,7 +355,13 @@ function loadSnapshot() {
         const fm = $.NSFileManager.defaultManager;
         if (!fm.fileExistsAtPath(path)) return null;
         const attrs = fm.attributesOfItemAtPathError(path, null);
-        const age = $.NSDate.date.timeIntervalSince1970 - attrs.fileModificationDate.timeIntervalSince1970;
+        const mtime = attrs.fileModificationDate.timeIntervalSince1970;
+        // A snapshot from a previous boot is garbage: window ids and Ghostty
+        // tab ids are reused across reboots, so a stale row can focus an
+        // unrelated window. Treat it as absent (forces the fast sync build).
+        const boot = bootTimeSeconds();
+        if (boot && mtime < boot) return null;
+        const age = $.NSDate.date.timeIntervalSince1970 - mtime;
         let fingerprint = '';
         try {
             fingerprint = $.NSString.stringWithContentsOfFileEncodingError(dir + '/tabs-fingerprint.txt', $.NSUTF8StringEncoding, null).js || '';
